@@ -6,6 +6,9 @@
 #include <linux/pci.h>
 #include <linux/interrupt.h>
 #include <linux/dma-mapping.h>
+#include <linux/slab.h>
+#include <linux/string.h>
+#include <linux/errno.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/initval.h>
@@ -37,10 +40,14 @@ struct maestro {
     spinlock_t lock;
 };
 
+/* IRQ handler */
 static irqreturn_t maestro_irq(int irq, void *dev_id)
 {
     struct maestro *chip = dev_id;
     u32 status;
+
+    if (!chip || !chip->mmio)
+        return IRQ_NONE;
 
     /* Read/ack IRQ - register names placeholder */
     status = readl(chip->mmio + REG_IRQ_STATUS);
@@ -128,6 +135,9 @@ static int maestro_ac97_attach(struct maestro *chip)
 {
     int err = 0;
 
+    if (!chip || !chip->card)
+        return -EINVAL;
+
     /* Example using snd_ac97_bus_new / snd_ac97_mixer or similar.
        Kernel ABI varies. Use ISIS driver as a pattern for your kernel. */
 
@@ -141,6 +151,7 @@ static int maestro_ac97_attach(struct maestro *chip)
     chip->ac97 = snd_ac97_mixer(chip->ac97_bus, 0 /* codec id */);
     if (!chip->ac97) {
         snd_ac97_bus_free(chip->ac97_bus);
+        chip->ac97_bus = NULL;
         return -ENODEV;
     }
 
@@ -150,29 +161,36 @@ static int maestro_ac97_attach(struct maestro *chip)
 
 static void maestro_cleanup_ac97(struct maestro *chip)
 {
-    if (!chip->ac97)
+    if (!chip)
         return;
-    /* detach/free in correct order */
-    snd_ac97_del(chip->ac97);
-    snd_ac97_bus_free(chip->ac97_bus);
-    chip->ac97 = NULL;
-    chip->ac97_bus = NULL;
+    if (chip->ac97) {
+        snd_ac97_del(chip->ac97);
+        chip->ac97 = NULL;
+    }
+    if (chip->ac97_bus) {
+        snd_ac97_bus_free(chip->ac97_bus);
+        chip->ac97_bus = NULL;
+    }
 }
 
 /* PCI probe */
 static int maestro_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 {
     struct maestro *chip;
-    struct snd_card *card;
+    struct snd_card *card = NULL;
     int err;
 
     err = pci_enable_device(pdev);
-    if (err)
+    if (err) {
+        dev_err(&pdev->dev, "pci_enable_device failed: %d\n", err);
         return err;
+    }
 
     err = pci_request_regions(pdev, DRIVER_NAME);
-    if (err)
+    if (err) {
+        dev_err(&pdev->dev, "pci_request_regions failed: %d\n", err);
         goto err_disable;
+    }
 
     pci_set_master(pdev);
 
@@ -185,8 +203,15 @@ static int maestro_probe(struct pci_dev *pdev, const struct pci_device_id *id)
     chip->pdev = pdev;
     pci_set_drvdata(pdev, chip);
 
-    /* Map BAR0 */
-    chip->mmio = pci_iomap(pdev, MAESTRO_BAR0, 0);
+    /* Map BAR0 using the resource length so ioremap range is correct */
+    {
+        resource_size_t bar_len = pci_resource_len(pdev, MAESTRO_BAR0);
+        if (bar_len == 0) {
+            dev_warn(&pdev->dev, "BAR %d length is 0, using minimal map\n", MAESTRO_BAR0);
+            bar_len = 1;
+        }
+        chip->mmio = pci_iomap(pdev, MAESTRO_BAR0, (unsigned int)bar_len);
+    }
     if (!chip->mmio) {
         err = -EIO;
         goto err_free;
@@ -204,33 +229,45 @@ static int maestro_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
     chip->irq = pdev->irq;
     err = request_irq(chip->irq, maestro_irq, IRQF_SHARED, DRIVER_NAME, chip);
-    if (err)
+    if (err) {
+        dev_err(&pdev->dev, "request_irq failed: %d\n", err);
         goto err_dma_free;
+    }
 
     /* Create ALSA card */
     err = snd_card_new(&pdev->dev, -1, "maestro", THIS_MODULE, 0, &card);
-    if (err)
+    if (err) {
+        dev_err(&pdev->dev, "snd_card_new failed: %d\n", err);
         goto err_irq_free;
+    }
     chip->card = card;
     card->private_data = chip;
 
     /* Create PCM instance (play/capture) */
     err = maestro_create_pcm(chip);
-    if (err)
+    if (err) {
+        dev_err(&pdev->dev, "maestro_create_pcm failed: %d\n", err);
         goto err_card;
+    }
 
     /* Attach AC97 codec(s) */
     err = maestro_ac97_attach(chip);
-    if (err)
+    if (err) {
+        dev_err(&pdev->dev, "maestro_ac97_attach failed: %d\n", err);
         goto err_card;
+    }
 
     /* Register card */
-    strcpy(card->driver, "Maestro-2EM");
-    strcpy(card->shortname, "ESS Maestro-2EM");
-    sprintf(card->longname, "ESS Maestro-2EM at %s", pci_name(pdev));
+    strlcpy(card->driver, "Maestro-2EM", sizeof(card->driver));
+    strlcpy(card->shortname, "ESS Maestro-2EM", sizeof(card->shortname));
+    snprintf(card->longname, sizeof(card->longname),
+             "ESS Maestro-2EM at %s", pci_name(pdev));
+
     err = snd_card_register(card);
-    if (err)
+    if (err) {
+        dev_err(&pdev->dev, "snd_card_register failed: %d\n", err);
         goto err_ac97;
+    }
 
     dev_info(&pdev->dev, "Maestro-2EM skeleton driver loaded\n");
     return 0;
@@ -238,13 +275,16 @@ static int maestro_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 err_ac97:
     maestro_cleanup_ac97(chip);
 err_card:
-    snd_card_free(card);
+    if (card)
+        snd_card_free(card);
 err_irq_free:
     free_irq(chip->irq, chip);
 err_dma_free:
-    dma_free_coherent(&pdev->dev, chip->dma_size, chip->dma_area, chip->dma_addr);
+    if (chip->dma_area)
+        dma_free_coherent(&pdev->dev, chip->dma_size, chip->dma_area, chip->dma_addr);
 err_iounmap:
-    pci_iounmap(pdev, chip->mmio);
+    if (chip->mmio)
+        pci_iounmap(pdev, chip->mmio);
 err_free:
     kfree(chip);
 err_regions:
@@ -259,11 +299,24 @@ static void maestro_remove(struct pci_dev *pdev)
 {
     struct maestro *chip = pci_get_drvdata(pdev);
 
-    snd_card_free(chip->card);
+    if (!chip)
+        return;
+
+    /* cleanup device-specific resources first (codec, etc.) */
     maestro_cleanup_ac97(chip);
+
+    /* Free the ALSA card (unregisters if necessary) */
+    if (chip->card)
+        snd_card_free(chip->card);
+
     free_irq(chip->irq, chip);
-    dma_free_coherent(&pdev->dev, chip->dma_size, chip->dma_area, chip->dma_addr);
-    pci_iounmap(pdev, chip->mmio);
+
+    if (chip->dma_area)
+        dma_free_coherent(&pdev->dev, chip->dma_size, chip->dma_area, chip->dma_addr);
+
+    if (chip->mmio)
+        pci_iounmap(pdev, chip->mmio);
+
     kfree(chip);
     pci_release_regions(pdev);
     pci_disable_device(pdev);
