@@ -77,9 +77,23 @@
 /* APU count (from es1968 driver) */
 #define NR_APUS                 64
 
-/* small timing values */
-#define ISIS_PRE_READ_US  100
-#define ISIS_PRE_WRITE_US 100
+/* ISIS / SAM control ports (relative to chip->io_base) */
+#define ISIS_DATA               0x46
+#define ISIS_ADDRESS            0x44
+
+#define ISIS_PRE_READ_US        100
+#define ISIS_PRE_WRITE_US       100
+
+/* GPIO ports (from maxiinit) */
+#define ESM_GPIO_DATA           0x60
+#define ESM_GPIO_MASK           0x64
+#define ESM_GPIO_DIR            0x68
+
+/* SAM interrupt bit (from maxiinit) */
+#undef SAM_INTERRUPT
+#define SAM_INTERRUPT           (1 << 3)
+
+
 
 /* Driver runtime structures (with es1968-style DMA pool) */
 struct maestro_mem_chunk {
@@ -432,6 +446,191 @@ static struct maestro_mem_chunk *maestro_new_memory(struct maestro *chip, int si
 static void maestro_free_memory(struct maestro *chip, struct maestro_mem_chunk *buf);
 static void maestro_free_dmabuf(struct maestro *chip);
 
+/* ISIS / SAM low-level I/O helpers (ported from maxiinit) */
+
+static void __isis_write_control(struct maestro *chip, u8 data)
+{
+    unsigned long io = chip->io_base;
+    int i = 0;
+
+    outw(0x0001, io + ISIS_ADDRESS);
+    /* Wait until not busy (bit 6 cleared) with simple timeout */
+    while (((inw(io + ISIS_DATA) & (1 << 6)) != 0) && i++ < 100000)
+        cpu_relax();
+
+    outb(data, io + ISIS_DATA);
+}
+
+static u8 __isis_read_control(struct maestro *chip)
+{
+    unsigned long io = chip->io_base;
+
+    outb(0x01, io + ISIS_ADDRESS);
+    return inb(io + ISIS_DATA);
+}
+
+static void __isis_write_data8(struct maestro *chip, u8 data)
+{
+    unsigned long io = chip->io_base;
+    int i = 0;
+
+    outw(0x0000, io + ISIS_ADDRESS);
+    /* Wait until not busy (bit 6 cleared) with simple timeout */
+    while (((inw(io + ISIS_DATA) & (1 << 6)) != 0) && i++ < 100000)
+        cpu_relax();
+
+    outb(data, io + ISIS_DATA);
+}
+
+static u8 __isis_read_data8(struct maestro *chip)
+{
+    unsigned long io = chip->io_base;
+
+    outb(0x00, io + ISIS_ADDRESS);
+    return inb(io + ISIS_DATA);
+}
+
+static void __isis_write_data16(struct maestro *chip, u16 data)
+{
+    unsigned long io = chip->io_base;
+
+    outw(0x0002, io + ISIS_ADDRESS);
+    outw(data, io + ISIS_DATA);
+}
+
+static u16 __isis_read_data16(struct maestro *chip)
+{
+    unsigned long io = chip->io_base;
+
+    outb(0x02, io + ISIS_ADDRESS);
+    return inw(io + ISIS_DATA);
+}
+
+static void __isis_burstwrite_data16(struct maestro *chip,
+                                     const u16 *data, u16 length)
+{
+    unsigned long io = chip->io_base;
+    u16 i;
+
+    outw(0x0002, io + ISIS_ADDRESS);
+    for (i = 0; i < length; i++)
+        outw(data[i], io + ISIS_DATA);
+}
+
+static void __isis_burstread_data16(struct maestro *chip,
+                                    u16 *buffer, u16 length)
+{
+    unsigned long io = chip->io_base;
+    u16 i;
+
+    outb(0x02, io + ISIS_ADDRESS);
+    for (i = 0; i < length; i++)
+        buffer[i] = inw(io + ISIS_DATA);
+}
+
+/* Public wrappers with timing and locking */
+
+static void isis_write_control(struct maestro *chip, u8 data)
+{
+    unsigned long flags;
+
+    udelay(ISIS_PRE_WRITE_US);
+    spin_lock_irqsave(&chip->reg_lock, flags);
+    __isis_write_control(chip, data);
+    spin_unlock_irqrestore(&chip->reg_lock, flags);
+}
+
+static u8 isis_read_control(struct maestro *chip)
+{
+    unsigned long flags;
+    u8 val;
+
+    udelay(ISIS_PRE_READ_US);
+    spin_lock_irqsave(&chip->reg_lock, flags);
+    val = __isis_read_control(chip);
+    spin_unlock_irqrestore(&chip->reg_lock, flags);
+    return val;
+}
+
+static void isis_write_data8(struct maestro *chip, u8 data)
+{
+    unsigned long flags;
+
+    udelay(ISIS_PRE_WRITE_US);
+    spin_lock_irqsave(&chip->reg_lock, flags);
+    __isis_write_data8(chip, data);
+    spin_unlock_irqrestore(&chip->reg_lock, flags);
+}
+
+static u8 isis_read_data8(struct maestro *chip)
+{
+    unsigned long flags;
+    u8 val;
+
+    udelay(ISIS_PRE_READ_US);
+    spin_lock_irqsave(&chip->reg_lock, flags);
+    val = __isis_read_data8(chip);
+    spin_unlock_irqrestore(&chip->reg_lock, flags);
+    return val;
+}
+
+static void isis_write_data16(struct maestro *chip, u16 data)
+{
+    unsigned long flags;
+
+    spin_lock_irqsave(&chip->reg_lock, flags);
+    __isis_write_data16(chip, data);
+    spin_unlock_irqrestore(&chip->reg_lock, flags);
+}
+
+static u16 isis_read_data16(struct maestro *chip)
+{
+    unsigned long flags;
+    u16 val;
+
+    spin_lock_irqsave(&chip->reg_lock, flags);
+    val = __isis_read_data16(chip);
+    spin_unlock_irqrestore(&chip->reg_lock, flags);
+    return val;
+}
+
+static void isis_burstwrite_data16(struct maestro *chip,
+                                   const u16 *data, u16 length)
+{
+    unsigned long flags;
+
+    spin_lock_irqsave(&chip->reg_lock, flags);
+    __isis_burstwrite_data16(chip, data, length);
+    spin_unlock_irqrestore(&chip->reg_lock, flags);
+}
+
+static void isis_burstread_data16(struct maestro *chip,
+                                  u16 *buffer, u16 length)
+{
+    unsigned long flags;
+
+    spin_lock_irqsave(&chip->reg_lock, flags);
+    __isis_burstread_data16(chip, buffer, length);
+    spin_unlock_irqrestore(&chip->reg_lock, flags);
+}
+
+/* Wait until SAM control bit 7 is either set (want_set=1) or cleared (want_set=0) */
+static int isis_wait_control_bit7(struct maestro *chip, int want_set)
+{
+    int timeout = 100000;
+
+    while (timeout-- > 0) {
+        u8 c = isis_read_control(chip);
+        int set = !!(c & (1 << 7));
+        if (set == want_set)
+            return 0;
+        udelay(10);
+    }
+    dev_err(&chip->pci->dev,
+            "maestro: timeout waiting for SAM control bit7=%d\n", want_set);
+    return -ETIMEDOUT;
+}
+
 /* -----------------------
    Low level index/data helpers (copied/adapted from es1968)
    ----------------------- */
@@ -730,36 +929,314 @@ static void maestro_cleanup_ac97(struct maestro *chip)
     /* AC97 codec is released automatically with the card */
 }
 
-/* Firmware upload simplified (maxiinit behaviour) */
+static const u16 samBoot[] = {
+    0xD0CE,0x0111,0xD0CE,0x01D5,0x0001,0x0003,0x0004,0x0006,
+    0x0001,0x0003,0x0002,0x0002,0x0006,0x0002,0x0001,0x0006,
+    0x0006,0x7A0C,0xE628,0x0001,0xD448,0x1010,0xC4CB,0xD1CB,
+    0xE2FE,0x4F01,0xE3FC,0x4E0D,0xE0FA,0x4700,0x8407,0xD148,
+    0x0104,0x9107,0x7A08,0x7A09,0xC590,0xD1CB,0xE2FE,0x4F01,
+    0xE3EE,0xC74D,0x6DFA,0xD44A,0x012E,0xC449,0x7816,0x7819,
+    0x7821,0x781D,0x782E,0x7830,0x7835,0x783A,0x783F,0x7849,
+    0x784C,0x786E,0x786D,0x7914,0x01F8,0x7A10,0x7A11,0x7915,
+    0x0000,0x7913,0x0007,0x7A12,0xD1CA,0xC44F,0xC4C4,0xD0CE,
+    0x01CB,0xC64F,0xC54F,0xC44F,0xCB4C,0xD5C4,0x78C4,0xC64F,
+    0xC74F,0xCF4C,0xC64F,0xC54F,0xCB4C,0x3D09,0xC64F,0xC54F,
+    0xCB4C,0x3D08,0xD449,0x0130,0xE302,0xC480,0x786C,0xCF80,
+    0x78B2,0xC04F,0xC4C9,0x7867,0xC64F,0xC54F,0xCB4C,0xC04F,
+    0xC5CB,0x78A9,0xC54F,0xC44F,0xC94A,0xD1CE,0x8405,0x785B,
+    0xC54F,0xC44F,0xC94A,0xD1CE,0x8406,0x7855,0xC74F,0xC64F,
+    0xCD4E,0xC74F,0xC54F,0xCB4E,0xC74F,0xC44F,0xC94E,0xD1CF,
+    0x7892,0xC64F,0xC54F,0xCB4C,0xC549,0xC04F,0x0001,0x0400,
+    0xC4CB,0x0115,0x0406,0xC04F,0xD0C1,0x7D01,0x6CFC,0xD0CA,
+    0x8418,0x0001,0xC4CB,0xD1C9,0x0001,0x840C,0xE901,0x0000,
+    0x7803,0xE911,0xD048,0xFFFF,0x7B00,0xE920,0xD1C8,0xC04F,
+    0xC14F,0xC24F,0xC34F,0xC44F,0xC54F,0xC64F,0xC74F,0xD1CA,
+    0x8704,0x0001,0x0410,0xC4CB,0xC54F,0xC44F,0xC94A,0x3C0D,
+    0xC54F,0xC44F,0xC94A,0x3C0F,0xC54F,0xC44F,0xC94A,0x3C0E,
+    0x0001,0xD448,0x2010,0xD548,0x3010,0xD749,0x013A,0xE304,
+    0xD448,0x1010,0xD548,0x1010,0xC4CB,0xC5CB,0x0006,0xC4CB,
+    0x7B0D,0xE3FE,0x78B5,0x0006,0xC4CB,0x0001,0xC5C9,0x3510,
+    0xE2FD,0xCA49,0x0006,0xC5CB,0x78AB,0xC74D,0xC64D,0xC54D,
+    0xC44D,0xC34D,0xC24D,0xC14D,0xC04D,0x7A05,0x840C,0x4100,
+    0xE101,0x4104,0xE301,0x4201,0xE501,0x4302,0xD94A,0xD94B,
+    0x3C0C,0x0001,0x0400,0xC4CB,0xD0C8,0x0110,0x0406,0xC0C1,
+    0xC04D,0x7C01,0x6CFC,0xD0CF,0x013B,0xD448,0x55AA,0x78D3,
+    0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000
+};
+
+/* Upload ISIS SAM firmware (pci64.bin) and configure SAM, based on maxiinit */ 
 static int maestro_upload_firmware(struct maestro *chip)
 {
     const struct firmware *fw = NULL;
     int err;
     u16 w;
+    unsigned long io = chip->io_base;
+    u16 *fw_words = NULL;
+    size_t fw_size, payload_bytes, payload_words;
+    int i;
+    u8 resp;
 
-    outw(inw(chip->io_base + ESM_PORT_HOST_IRQ) & ~SAM_INTERRUPT, chip->io_base + ESM_PORT_HOST_IRQ);
+    dev_info(&chip->pci->dev, "maestro: ISIS SAM init started\n");
 
+    /* Disable SAM interrupt (Host Interrupt Control) */
+    w = inw(io + ESM_PORT_HOST_IRQ);
+    w &= ~SAM_INTERRUPT;
+    outw(w, io + ESM_PORT_HOST_IRQ);
+
+    /* Enable MPU-401 decode (Config A / PCI offset 0x50, OR 0x18) */
     pci_read_config_word(chip->pci, ESM_CONFIG_A, &w);
-    w |= 0x18;
+    w |= 0x0018;
     pci_write_config_word(chip->pci, ESM_CONFIG_A, w);
 
-    outw(0x0193, chip->io_base + 0x64);
-    outw(0x0E64, chip->io_base + 0x68);
-    w = inw(chip->io_base + 0x64);
-    outw(w | 1, chip->io_base + 0x64);
-    outw(0x0144, chip->io_base + 0x68);
-    outw(0x0D64, chip->io_base + 0x68);
+    /* Clock source setup (GPIO mask, direction, data) */
+    outw(0x0193, io + ESM_GPIO_MASK);
+    outw(0x0E64, io + ESM_GPIO_DIR);
+    w = inw(io + ESM_GPIO_DATA);
+    w &= 0xFF9F;
+    w |= 0x0024;
+    outw(w, io + ESM_GPIO_DATA);
 
+    /* Mysterious PLD sequence (mask + data bit 9 set) */
+    outw(0x0DFF, io + ESM_GPIO_MASK);
+    w = inw(io + ESM_GPIO_DATA);
+    w |= 0x0200;
+    outw(w, io + ESM_GPIO_DATA);
+    outw(0x0FFF, io + ESM_GPIO_MASK);
+
+    /* Reset SAM (control 0x70, data 0x11) */
+    isis_write_control(chip, 0x70);
+    isis_write_data8(chip, 0x11);
+    msleep(10);
+
+    /* Boot SAM with samBoot[] code */
+    err = isis_wait_control_bit7(chip, 1);
+    if (err < 0)
+        return err;
+
+    isis_burstwrite_data16(chip, samBoot,
+                           (u16)(ARRAY_SIZE(samBoot)));
+
+    err = isis_wait_control_bit7(chip, 1);
+    if (err < 0)
+        return err;
+
+    /* Finish boot: control 0x04, then 0x00 */
+    isis_write_control(chip, 0x04);
+
+    err = isis_wait_control_bit7(chip, 1);
+    if (err < 0)
+        return err;
+
+    isis_write_control(chip, 0x00);
+
+    err = isis_wait_control_bit7(chip, 1);
+    if (err < 0)
+        return err;
+
+    /* Firmware load preparation (sequence of control writes) */
+    isis_write_control(chip, 0x05);
+    err = isis_wait_control_bit7(chip, 1);
+    if (err < 0)
+        return err;
+    isis_write_control(chip, 0x00);
+
+    err = isis_wait_control_bit7(chip, 1);
+    if (err < 0)
+        return err;
+    isis_write_control(chip, 0x00);
+
+    err = isis_wait_control_bit7(chip, 1);
+    if (err < 0)
+        return err;
+    isis_write_control(chip, 0x00);
+
+    err = isis_wait_control_bit7(chip, 1);
+    if (err < 0)
+        return err;
+    isis_write_control(chip, 0x0B);
+
+    err = isis_wait_control_bit7(chip, 1);
+    if (err < 0)
+        return err;
+    isis_write_control(chip, 0x00);
+
+    err = isis_wait_control_bit7(chip, 1);
+    if (err < 0)
+        return err;
+    isis_write_control(chip, 0x02);
+
+    err = isis_wait_control_bit7(chip, 1);
+    if (err < 0)
+        return err;
+    isis_write_control(chip, 0x00);
+
+    err = isis_wait_control_bit7(chip, 1);
+    if (err < 0)
+        return err;
+    isis_write_control(chip, 0x00);
+
+    err = isis_wait_control_bit7(chip, 1);
+    if (err < 0)
+        return err;
+    isis_write_control(chip, 0x57);
+
+    err = isis_wait_control_bit7(chip, 1);
+    if (err < 0)
+        return err;
+    isis_write_control(chip, 0x6B);
+
+    err = isis_wait_control_bit7(chip, 1);
+    if (err < 0)
+        return err;
+
+    msleep(10);
+
+    /* Load pci64.bin via request_firmware */
     err = request_firmware(&fw, "pci64.bin", &chip->pci->dev);
     if (err < 0) {
-        dev_err(&chip->pci->dev, "maestro: cannot load firmware pci64.bin\n");
+        dev_err(&chip->pci->dev,
+                "maestro: cannot load firmware pci64.bin (%d)\n", err);
         return err;
     }
 
-    /* TODO: implement real upload from maxiinit here */
+    fw_size = fw->size;
+    if (fw_size <= 0x400) {
+        dev_err(&chip->pci->dev,
+                "maestro: firmware too small (%zu bytes)\n", fw_size);
+        err = -EINVAL;
+        goto out_release_fw;
+    }
 
+    payload_bytes = fw_size - 0x400;
+    payload_words = payload_bytes / 2;
+
+    fw_words = kmalloc(payload_words * sizeof(u16), GFP_KERNEL);
+    if (!fw_words) {
+        err = -ENOMEM;
+        goto out_release_fw;
+    }
+
+    /* Copy and align firmware payload as 16-bit words */
+    memcpy(fw_words, fw->data + 0x400, payload_words * sizeof(u16));
+
+    dev_info(&chip->pci->dev,
+             "maestro: uploading firmware (%zu words)\n", payload_words);
+
+    isis_burstwrite_data16(chip, fw_words, (u16)payload_words);
+
+    kfree(fw_words);
+    fw_words = NULL;
     release_firmware(fw);
+    fw = NULL;
+
+    /* Post-firmware mysterious sequence: 0x09, 0x00, 0x02 */
+    err = isis_wait_control_bit7(chip, 1);
+    if (err < 0)
+        return err;
+    isis_write_control(chip, 0x09);
+
+    err = isis_wait_control_bit7(chip, 1);
+    if (err < 0)
+        return err;
+    isis_write_control(chip, 0x00);
+
+    err = isis_wait_control_bit7(chip, 1);
+    if (err < 0)
+        return err;
+    isis_write_control(chip, 0x02);
+
+    err = isis_wait_control_bit7(chip, 1);
+    if (err < 0)
+        return err;
+
+    /* Disable SAM interrupt again */
+    w = inw(io + ESM_PORT_HOST_IRQ);
+    w &= ~SAM_INTERRUPT;
+    outw(w, io + ESM_PORT_HOST_IRQ);
+
+    /* Switch to UART mode (control 0x3F) */
+    isis_write_control(chip, 0x3F);
+    msleep(10);
+
+    /* Wait for SAM response 0xFE on DATA8 */
+    err = isis_wait_control_bit7(chip, 0);
+    if (err < 0)
+        return err;
+
+    resp = isis_read_data8(chip);
+    if (resp != 0xFE)
+        dev_warn(&chip->pci->dev,
+                 "maestro: unexpected SAM UART response 0x%02x\n", resp);
+
+    /* Get MMT address (control 0x03, param 0) */
+    err = isis_wait_control_bit7(chip, 1);
+    if (err < 0)
+        return err;
+    isis_write_control(chip, 0x03);
+
+    err = isis_wait_control_bit7(chip, 1);
+    if (err < 0)
+        return err;
+    isis_write_data8(chip, 0x00);
+
+    for (i = 0; i < 4; i++) {
+        err = isis_wait_control_bit7(chip, 0);
+        if (err < 0)
+            return err;
+        chip->MMT_addr[i] = isis_read_data8(chip);
+    }
+
+    /* More mysterious control sequences: 0x05 -> 0x01, 0x2C -> 0x00 */
+    err = isis_wait_control_bit7(chip, 1);
+    if (err < 0)
+        return err;
+    isis_write_control(chip, 0x05);
+
+    err = isis_wait_control_bit7(chip, 1);
+    if (err < 0)
+        return err;
+    isis_write_data8(chip, 0x01);
+
+    err = isis_wait_control_bit7(chip, 1);
+    if (err < 0)
+        return err;
+    isis_write_control(chip, 0x2C);
+
+    err = isis_wait_control_bit7(chip, 1);
+    if (err < 0)
+        return err;
+    isis_write_data8(chip, 0x00);
+
+    /* Test interrupt generation (control 0x48, data 0x00) */
+    isis_write_control(chip, 0x48);
+    isis_write_data8(chip, 0x00);
+
+    err = isis_wait_control_bit7(chip, 0);
+    if (err < 0)
+        return err;
+
+    resp = isis_read_data8(chip);
+    if (resp != 0x88)
+        dev_warn(&chip->pci->dev,
+                 "maestro: unexpected SAM interrupt test response 0x%02x\n",
+                 resp);
+
+    /* Unmute output channels via GPIO: mask 0x07FF, set bit 11, then mask 0x0FFF */
+    outw(0x07FF, io + ESM_GPIO_MASK);
+    w = inw(io + ESM_GPIO_DATA);
+    w |= (1 << 11);
+    outw(w, io + ESM_GPIO_DATA);
+    outw(0x0FFF, io + ESM_GPIO_MASK);
+
+    dev_info(&chip->pci->dev, "maestro: ISIS SAM init complete\n");
     return 0;
+
+out_release_fw:
+    if (fw_words)
+        kfree(fw_words);
+    if (fw)
+        release_firmware(fw);
+    return err;
 }
 
 /* Basic chip init after PCI and IO regions are set up */
