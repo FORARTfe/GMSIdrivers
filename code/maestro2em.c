@@ -124,6 +124,250 @@ struct maestro {
     int clock;
 };
 
+struct maestro_pcm_channel {
+    struct maestro *chip;
+    struct snd_pcm_substream *substream;
+
+    struct maestro_mem_chunk *mem;  /* allocated from maestro DMA pool */
+
+    size_t buffer_bytes;
+    size_t period_bytes;
+
+    snd_pcm_uframes_t hw_ptr;       /* software view of hardware pointer */
+    int running;
+
+    struct list_head list;          /* link into chip->substream_list */
+
+    spinlock_t lock;                /* protects channel state */
+};
+
+/* Open callback shared by playback and capture */
+
+static int maestro_pcm_open_generic(struct snd_pcm_substream *substream,
+                                    const struct snd_pcm_hardware *hw)
+{
+    struct maestro *chip = snd_pcm_substream_chip(substream);
+    struct snd_pcm_runtime *runtime = substream->runtime;
+    struct maestro_pcm_channel *chan;
+
+    chan = kzalloc(sizeof(*chan), GFP_KERNEL);
+    if (!chan)
+        return -ENOMEM;
+
+    chan->chip = chip;
+    chan->substream = substream;
+    chan->mem = NULL;
+    chan->buffer_bytes = 0;
+    chan->period_bytes = 0;
+    chan->hw_ptr = 0;
+    chan->running = 0;
+    spin_lock_init(&chan->lock);
+
+    INIT_LIST_HEAD(&chan->list);
+
+    runtime->private_data = chan;
+    runtime->hw = *hw; /* copy capabilities */
+
+    /* Add channel to chip's substream list for use in IRQ handler */
+    spin_lock(&chip->substream_lock);
+    list_add_tail(&chan->list, &chip->substream_list);
+    spin_unlock(&chip->substream_lock);
+
+    return 0;
+}
+
+static int maestro_pcm_open_playback(struct snd_pcm_substream *substream)
+{
+    return maestro_pcm_open_generic(substream, &maestro_pcm_hw_playback);
+}
+
+static int maestro_pcm_open_capture(struct snd_pcm_substream *substream)
+{
+    return maestro_pcm_open_generic(substream, &maestro_pcm_hw_capture);
+}
+
+static int maestro_pcm_close(struct snd_pcm_substream *substream)
+{
+    struct maestro *chip = snd_pcm_substream_chip(substream);
+    struct maestro_pcm_channel *chan = substream->runtime->private_data;
+
+    if (!chan)
+        return 0;
+
+    /* Remove from chip list */
+    spin_lock(&chip->substream_lock);
+    list_del(&chan->list);
+    spin_unlock(&chip->substream_lock);
+
+    /* If hw_free was not called for some reason, free pool memory here */
+    if (chan->mem) {
+        maestro_free_memory(chip, chan->mem);
+        chan->mem = NULL;
+    }
+
+    kfree(chan);
+    substream->runtime->private_data = NULL;
+
+    return 0;
+}
+
+/* hw_params: allocate from maestro DMA pool */
+
+static int maestro_pcm_hw_params(struct snd_pcm_substream *substream,
+                                 struct snd_pcm_hw_params *params)
+{
+    struct maestro *chip = snd_pcm_substream_chip(substream);
+    struct snd_pcm_runtime *runtime = substream->runtime;
+    struct maestro_pcm_channel *chan = runtime->private_data;
+    struct maestro_mem_chunk *mem;
+    size_t size;
+
+    if (!chan)
+        return -EINVAL;
+
+    if (chan->mem) {
+        /* already allocated, free first */
+        maestro_free_memory(chip, chan->mem);
+        chan->mem = NULL;
+    }
+
+    size = params_buffer_bytes(params);
+
+    /* Allocate from internal DMA pool (es1968-style) */
+    mem = maestro_new_memory(chip, size);
+    if (!mem)
+        return -ENOMEM;
+
+    chan->mem = mem;
+    chan->buffer_bytes = size;
+    chan->period_bytes = params_period_bytes(params);
+    chan->hw_ptr = 0;
+
+    runtime->dma_area = mem->buf;
+    runtime->dma_addr = mem->addr;
+    runtime->dma_bytes = size;
+
+    return 0;
+}
+
+/* hw_free: release memory back to DMA pool */
+
+static int maestro_pcm_hw_free(struct snd_pcm_substream *substream)
+{
+    struct maestro *chip = snd_pcm_substream_chip(substream);
+    struct snd_pcm_runtime *runtime = substream->runtime;
+    struct maestro_pcm_channel *chan = runtime->private_data;
+
+    if (!chan)
+        return 0;
+
+    if (chan->mem) {
+        maestro_free_memory(chip, chan->mem);
+        chan->mem = NULL;
+    }
+
+    runtime->dma_area = NULL;
+    runtime->dma_addr = 0;
+    runtime->dma_bytes = 0;
+
+    chan->buffer_bytes = 0;
+    chan->period_bytes = 0;
+    chan->hw_ptr = 0;
+
+    return 0;
+}
+
+/* prepare: program hardware registers and reset pointer */
+
+static int maestro_pcm_prepare(struct snd_pcm_substream *substream)
+{
+    struct maestro *chip = snd_pcm_substream_chip(substream);
+    struct snd_pcm_runtime *runtime = substream->runtime;
+    struct maestro_pcm_channel *chan = runtime->private_data;
+
+    if (!chan || !chan->mem)
+        return -EINVAL;
+
+    chan->hw_ptr = 0;
+
+    /*
+     * TODO: Here you must:
+     *  - Program WaveCache/APU descriptors to point to chan->mem->addr
+     *  - Set buffer/period sizes according to chan->buffer_bytes and chan->period_bytes
+     *  - Configure sample format, rate and channels from runtime
+     *
+     * Use maestro_write() / maestro_read() helpers and descriptor area
+     * as per original es1968 / ISIS code.
+     */
+
+    return 0;
+}
+
+/* trigger: start/stop the hardware stream */
+
+static int maestro_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
+{
+    struct snd_pcm_runtime *runtime = substream->runtime;
+    struct maestro_pcm_channel *chan = runtime->private_data;
+    struct maestro *chip = snd_pcm_substream_chip(substream);
+    unsigned long flags;
+
+    if (!chan)
+        return -EINVAL;
+
+    switch (cmd) {
+    case SNDRV_PCM_TRIGGER_START:
+    case SNDRV_PCM_TRIGGER_RESUME:
+    case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
+        spin_lock_irqsave(&chan->lock, flags);
+        chan->running = 1;
+        /*
+         * TODO: Enable the corresponding APU/DMA channel in hardware.
+         */
+        spin_unlock_irqrestore(&chan->lock, flags);
+        break;
+
+    case SNDRV_PCM_TRIGGER_STOP:
+    case SNDRV_PCM_TRIGGER_SUSPEND:
+    case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
+        spin_lock_irqsave(&chan->lock, flags);
+        chan->running = 0;
+        /*
+         * TODO: Disable the corresponding APU/DMA channel in hardware.
+         */
+        spin_unlock_irqrestore(&chan->lock, flags);
+        break;
+
+    default:
+        return -EINVAL;
+    }
+
+    return 0;
+}
+
+/* pointer: return current hardware position in frames */
+
+static snd_pcm_uframes_t maestro_pcm_pointer(struct snd_pcm_substream *substream)
+{
+    struct snd_pcm_runtime *runtime = substream->runtime;
+    struct maestro_pcm_channel *chan = runtime->private_data;
+    snd_pcm_uframes_t ptr;
+
+    if (!chan || !chan->mem)
+        return 0;
+
+    /*
+     * TODO: Read current playback/capture position from hardware and convert
+     * it to frames. For now, we return the software pointer.
+     */
+    ptr = chan->hw_ptr;
+
+    if (ptr >= runtime->buffer_size)
+        ptr %= runtime->buffer_size;
+
+    return ptr;
+}
+
 /* forward prototypes */
 static int maestro_init_dmabuf(struct maestro *chip, int total_kbytes);
 static struct maestro_mem_chunk *maestro_new_memory(struct maestro *chip, int size);
@@ -205,6 +449,42 @@ static unsigned short maestro_ac97_read(struct snd_ac97 *ac97, unsigned short re
     spin_unlock_irqrestore(&chip->reg_lock, flags);
     return data;
 }
+
+static const struct snd_pcm_hardware maestro_pcm_hw_playback = {
+    .info = SNDRV_PCM_INFO_MMAP |
+            SNDRV_PCM_INFO_INTERLEAVED |
+            SNDRV_PCM_INFO_BLOCK_TRANSFER,
+    .formats = SNDRV_PCM_FMTBIT_S16_LE,
+    .rates = SNDRV_PCM_RATE_8000_48000,
+    .rate_min = 8000,
+    .rate_max = 48000,
+    .channels_min = 2,
+    .channels_max = 2,
+    .buffer_bytes_max = 512 * 1024,   /* must not exceed DMA pool size */
+    .period_bytes_min = 64,
+    .period_bytes_max = 128 * 1024,
+    .periods_min = 2,
+    .periods_max = 1024,
+    .fifo_size = 0,
+};
+
+static const struct snd_pcm_hardware maestro_pcm_hw_capture = {
+    .info = SNDRV_PCM_INFO_MMAP |
+            SNDRV_PCM_INFO_INTERLEAVED |
+            SNDRV_PCM_INFO_BLOCK_TRANSFER,
+    .formats = SNDRV_PCM_FMTBIT_S16_LE,
+    .rates = SNDRV_PCM_RATE_8000_48000,
+    .rate_min = 8000,
+    .rate_max = 48000,
+    .channels_min = 1,
+    .channels_max = 8,
+    .buffer_bytes_max = 512 * 1024,   /* must not exceed DMA pool size */
+    .period_bytes_min = 64,
+    .period_bytes_max = 128 * 1024,
+    .periods_min = 2,
+    .periods_max = 1024,
+    .fifo_size = 0,
+};
 
 static struct snd_ac97_bus_ops maestro_ac97_bus_ops = {
     .write = maestro_ac97_write,
@@ -377,11 +657,20 @@ static irqreturn_t maestro_interrupt(int irq, void *dev_id)
     outw(inw(chip->io_base + 4) & 1, chip->io_base + 4);
     outb(0xFF, chip->io_base + 0x1A);
 
-    if (event & ESM_HIRQ_DSIE) {
+        if (event & ESM_HIRQ_DSIE) {
         struct list_head *p, *n;
+
         spin_lock(&chip->substream_lock);
         list_for_each_safe(p, n, &chip->substream_list) {
-            /* in a full driver we'd find the esschan and call snd_pcm_period_elapsed() */
+            struct maestro_pcm_channel *chan =
+                list_entry(p, struct maestro_pcm_channel, list);
+
+            /*
+             * TODO: Check which APU/channel raised the interrupt, update chan->hw_ptr
+             * according to hardware position and call:
+             *
+             * snd_pcm_period_elapsed(chan->substream);
+             */
         }
         spin_unlock(&chip->substream_lock);
     }
@@ -530,15 +819,13 @@ static int maestro_probe(struct pci_dev *pdev, const struct pci_device_id *id)
         err = snd_pcm_new(card, "Maestro PCM", 0, 1, 1, &pcm);
         if (err)
             goto err_card;
-chip->pcm = pcm;
+        chip->pcm = pcm;
         pcm->private_data = chip;
         pcm->info_flags = 0;
         strcpy(pcm->name, "Guillemot Maxi Studio ISIS");
 
-        /* 
         snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_PLAYBACK, &maestro_pcm_playback_ops);
         snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_CAPTURE, &maestro_pcm_capture_ops);
-        */
 
         /* AC'97 Inizialization */
         err = maestro_ac97_attach(chip);
