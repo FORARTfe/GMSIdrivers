@@ -93,7 +93,27 @@
 #undef SAM_INTERRUPT
 #define SAM_INTERRUPT           (1 << 3)
 
+/* Stream format flags */
+#define ESS_FMT_STEREO      0x01
+#define ESS_FMT_16BIT       0x02
 
+/* Stream mode */
+#define MAESTRO_MODE_PLAY   0
+#define MAESTRO_MODE_CAPTURE 1
+
+/* Bob timer parameters (copied from es1968) */
+#define ESS_SYSCLK          50000000
+#define MAESTRO_BOB_FREQ    200
+#define MAESTRO_BOB_FREQ_MAX 800
+
+/* Host IRQ status bits (read at io_base + 0x1A) */
+#define ESM_SOUND_IRQ       0x04   /* DirectSound / WaveCache IRQ */
+#define ESM_HWVOL_IRQ       0x40
+
+/* SAM / Dream interrupt bit in Host IRQ control */
+#ifndef SAM_INTERRUPT
+#define SAM_INTERRUPT       0x0008
+#endif
 
 /* Driver runtime structures (with es1968-style DMA pool) */
 struct maestro_mem_chunk {
@@ -124,11 +144,10 @@ struct maestro {
     unsigned int desc_count;
 
     struct snd_pcm *pcm;
-    struct snd_ac97 *ac97;
+    struct ac97 *ac97;
 
     spinlock_t reg_lock;
     spinlock_t substream_lock;
-    struct list_head substream_list;
 
     u8 apu[NR_APUS];             /* APU usage map */
     u8 MMT_addr[4];
@@ -136,24 +155,111 @@ struct maestro {
     atomic_t running;
     atomic_t bobclient;
     int clock;
+
+    int bob_freq;                /* current Bob timer frequency */
+    struct list_head substream_list; /* active PCM channels */
 };
 
 struct maestro_pcm_channel {
-    struct maestro *chip;
-    struct snd_pcm_substream *substream;
-
-    struct maestro_mem_chunk *mem;  /* allocated from maestro DMA pool */
-
-    size_t buffer_bytes;
-    size_t period_bytes;
-
-    snd_pcm_uframes_t hw_ptr;       /* software view of hardware pointer */
     int running;
 
-    struct list_head list;          /* link into chip->substream_list */
+    u8 apu[4];            /* APUs assigned to this stream */
+    u8 apu_mode[4];       /* mode programmed in each APU */
 
-    spinlock_t lock;                /* protects channel state */
+    struct maestro_mem_chunk *memory; /* playback/capture buffer in DMA pool */
+    struct maestro_mem_chunk *mixbuf; /* capture mix buffer (if needed) */
+
+    unsigned int hwptr;   /* current hw pointer in bytes */
+    unsigned int count;   /* bytes accumulated since last period */
+    unsigned int dma_size;/* total buffer size in bytes */
+    unsigned int frag_size; /* period size in bytes */
+    unsigned int wav_shift;
+    u16 base[4];          /* APU base offsets */
+
+    unsigned char fmt;    /* ESS_FMT_* flags */
+    int mode;             /* MAESTRO_MODE_PLAY / MAESTRO_MODE_CAPTURE */
+
+    int bob_freq;         /* required Bob timer frequency for this stream */
+
+    struct snd_pcm_substream *substream;
+
+    struct list_head list; /* link in chip->substream_list */
 };
+
+static int maestro_pcm_prepare(struct snd_pcm_substream *substream)
+{
+    struct maestro *chip = snd_pcm_substream_chip(substream);
+    struct snd_pcm_runtime *runtime = substream->runtime;
+    struct maestro_pcm_channel *chan = runtime->private_data;
+
+    if (!chan || !chan->memory)
+        return -EINVAL;
+
+    chan->hwptr = 0;
+    chan->count = 0;
+
+    if (chan->mode == MAESTRO_MODE_PLAY)
+        maestro_playback_setup(chip, chan, runtime);
+    /* capture_setup can be added here when you port it */
+
+    return 0;
+}
+
+static int maestro_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
+{
+    struct maestro *chip = snd_pcm_substream_chip(substream);
+    struct maestro_pcm_channel *chan = substream->runtime->private_data;
+
+    spin_lock(&chip->substream_lock);
+
+    switch (cmd) {
+    case SNDRV_PCM_TRIGGER_START:
+    case SNDRV_PCM_TRIGGER_RESUME:
+        if (!chan->running) {
+            maestro_bob_inc(chip, chan->bob_freq);
+            chan->count = 0;
+            chan->hwptr = 0;
+            maestro_pcm_start(chip, chan);
+            chan->running = 1;
+        }
+        break;
+
+    case SNDRV_PCM_TRIGGER_STOP:
+    case SNDRV_PCM_TRIGGER_SUSPEND:
+        if (chan->running) {
+            maestro_pcm_stop(chip, chan);
+            chan->running = 0;
+            maestro_bob_dec(chip);
+        }
+        break;
+    }
+
+    spin_unlock(&chip->substream_lock);
+    return 0;
+}
+
+static snd_pcm_uframes_t maestro_pcm_pointer(struct snd_pcm_substream *substream)
+{
+    struct maestro *chip = snd_pcm_substream_chip(substream);
+    struct maestro_pcm_channel *chan = substream->runtime->private_data;
+    unsigned int ptr;
+
+    ptr = maestro_get_dma_ptr(chip, chan) << chan->wav_shift;
+
+    return bytes_to_frames(substream->runtime, ptr % chan->dma_size);
+}
+
+static snd_pcm_uframes_t maestro_pcm_pointer(struct snd_pcm_substream *substream)
+{
+    struct maestro *chip = snd_pcm_substream_chip(substream);
+    struct maestro_pcm_channel *chan = substream->runtime->private_data;
+    unsigned int ptr;
+
+    ptr = maestro_get_dma_ptr(chip, chan) << chan->wav_shift;
+
+    return bytes_to_frames(substream->runtime, ptr % chan->dma_size);
+}
+
 
 static const struct snd_pcm_hardware maestro_pcm_hw_playback = {
     .info = SNDRV_PCM_INFO_MMAP |
@@ -327,6 +433,70 @@ static int maestro_pcm_hw_free(struct snd_pcm_substream *substream)
     return 0;
 }
 
+static void maestro_update_pcm(struct maestro *chip,
+                               struct maestro_pcm_channel *chan)
+{
+    unsigned int hwptr;
+    unsigned int diff;
+    struct snd_pcm_substream *subs = chan->substream;
+
+    if (!subs || !chan->running)
+        return;
+
+    hwptr = maestro_get_dma_ptr(chip, chan) << chan->wav_shift;
+    hwptr %= chan->dma_size;
+
+    diff = (chan->dma_size + hwptr - chan->hwptr) % chan->dma_size;
+
+    chan->hwptr = hwptr;
+    chan->count += diff;
+
+    if (chan->count >= chan->frag_size) {
+        spin_unlock(&chip->substream_lock);
+        snd_pcm_period_elapsed(subs);
+        spin_lock(&chip->substream_lock);
+        chan->count %= chan->frag_size;
+    }
+}
+
+static irqreturn_t maestro_interrupt(int irq, void *dev_id)
+{
+    struct maestro *chip = dev_id;
+    u8 event;
+
+    if (!chip)
+        return IRQ_NONE;
+
+    event = inb(chip->io_base + 0x1A);
+    if (!event)
+        return IRQ_NONE;
+
+    outw(inw(chip->io_base + 4) & 1, chip->io_base + 4);
+
+    if (event & ESM_HWVOL_IRQ) {
+        /* optional: handle hardware volume buttons later */
+    }
+
+    /* acknowledge all bits */
+    outb(0xFF, chip->io_base + 0x1A);
+
+    if (event & ESM_SOUND_IRQ) {
+        struct list_head *p;
+
+        spin_lock(&chip->substream_lock);
+        list_for_each(p, &chip->substream_list) {
+            struct maestro_pcm_channel *chan =
+                list_entry(p, struct maestro_pcm_channel, list);
+            maestro_update_pcm(chip, chan);
+        }
+        spin_unlock(&chip->substream_lock);
+    }
+
+    /* SAM / Dream IRQ handling can be added here using SAM_INTERRUPT */
+
+    return IRQ_HANDLED;
+}
+
 /* prepare: program hardware registers and reset pointer */
 
 static int maestro_pcm_prepare(struct snd_pcm_substream *substream)
@@ -351,6 +521,213 @@ static int maestro_pcm_prepare(struct snd_pcm_substream *substream)
      */
 
     return 0;
+}
+
+static void maestro_bob_stop(struct maestro *chip)
+{
+    u16 reg;
+
+    reg = __maestro_read(chip, 0x11);
+    reg &= ~0x0001;
+    __maestro_write(chip, 0x11, reg);
+    reg = __maestro_read(chip, 0x17);
+    reg &= ~0x0001;
+    __maestro_write(chip, 0x17, reg);
+}
+
+static void maestro_bob_start(struct maestro *chip)
+{
+    int prescale;
+    int divide;
+
+    /* compute ideal interrupt frequency for buffer size & play rate */
+    for (prescale = 5; prescale < 12; prescale++)
+        if (chip->bob_freq > (ESS_SYSCLK >> (prescale + 9)))
+            break;
+
+    divide = 1;
+    while ((prescale > 5) && (divide < 32)) {
+        prescale--;
+        divide <<= 1;
+    }
+    divide >>= 1;
+
+    for (; divide < 31; divide++)
+        if (chip->bob_freq >
+            ((ESS_SYSCLK >> (prescale + 9)) / (divide + 1)))
+            break;
+
+    if (divide == 0) {
+        divide++;
+        if (prescale > 5)
+            prescale--;
+    } else if (divide > 1) {
+        divide--;
+    }
+
+    __maestro_write(chip, 6, 0x9000 | (prescale << 5) | divide);
+
+    __maestro_write(chip, 0x11, __maestro_read(chip, 0x11) | 1);
+    __maestro_write(chip, 0x17, __maestro_read(chip, 0x17) | 1);
+}
+
+/* call with substream_lock held */
+static void maestro_bob_inc(struct maestro *chip, int freq)
+{
+    int clients = atomic_inc_return(&chip->bobclient);
+
+    if (clients == 1) {
+        chip->bob_freq = freq;
+        maestro_bob_start(chip);
+    } else if (chip->bob_freq < freq) {
+        maestro_bob_stop(chip);
+        chip->bob_freq = freq;
+        maestro_bob_start(chip);
+    }
+}
+
+/* call with substream_lock held */
+static void maestro_bob_dec(struct maestro *chip)
+{
+    int clients = atomic_dec_return(&chip->bobclient);
+
+    if (clients <= 0) {
+        maestro_bob_stop(chip);
+        atomic_set(&chip->bobclient, 0);
+    } else if (chip->bob_freq > MAESTRO_BOB_FREQ) {
+        struct list_head *p;
+        int max_freq = MAESTRO_BOB_FREQ;
+
+        list_for_each(p, &chip->substream_list) {
+            struct maestro_pcm_channel *chan =
+                list_entry(p, struct maestro_pcm_channel, list);
+            if (chan->bob_freq > max_freq)
+                max_freq = chan->bob_freq;
+        }
+        if (max_freq != chip->bob_freq) {
+            maestro_bob_stop(chip);
+            chip->bob_freq = max_freq;
+            maestro_bob_start(chip);
+        }
+    }
+}
+
+static int maestro_calc_bob_rate(struct maestro *chip,
+                                 struct maestro_pcm_channel *chan,
+                                 struct snd_pcm_runtime *runtime)
+{
+    int freq = runtime->rate * 4;
+
+    if (chan->fmt & ESS_FMT_STEREO)
+        freq <<= 1;
+    if (chan->fmt & ESS_FMT_16BIT)
+        freq <<= 1;
+
+    freq /= chan->frag_size;
+
+    if (freq < MAESTRO_BOB_FREQ)
+        freq = MAESTRO_BOB_FREQ;
+    else if (freq > MAESTRO_BOB_FREQ_MAX)
+        freq = MAESTRO_BOB_FREQ_MAX;
+
+    return freq;
+}
+
+static u32 maestro_compute_rate(struct maestro *chip, u32 freq)
+{
+    u32 rate = (freq << 16) / chip->clock;
+    return rate;
+}
+
+static inline unsigned int
+maestro_get_dma_ptr(struct maestro *chip, struct maestro_pcm_channel *chan)
+{
+    unsigned int offset;
+
+    offset = apu_get_register(chip, chan->apu[0], 5);
+    offset -= chan->base[0];
+
+    return offset & 0xFFFE; /* hardware is in words */
+}
+
+static void maestro_apu_set_freq(struct maestro *chip, int apu, int freq)
+{
+    apu_set_register(chip, apu, 2,
+                     (apu_get_register(chip, apu, 2) & 0x00FF) |
+                     ((freq & 0xff) << 8) | 0x10);
+    apu_set_register(chip, apu, 3, freq >> 8);
+}
+
+/* spinlock reg_lock must be held */
+static inline void maestro_trigger_apu(struct maestro *chip,
+                                       int apu, int mode)
+{
+    u16 v = apu_get_register(chip, apu, 0);
+    v = (v & 0xff0f) | (mode << 4);
+    apu_set_register(chip, apu, 0, v);
+}
+
+/* simple inline versions using existing apu_set/get */
+static inline void maestro_pcm_start(struct maestro *chip,
+                                     struct maestro_pcm_channel *chan)
+{
+    unsigned long flags;
+
+    spin_lock_irqsave(&chip->reg_lock, flags);
+
+    apu_set_register(chip, chan->apu[0], 5, chan->base[0]);
+    maestro_trigger_apu(chip, chan->apu[0], chan->apu_mode[0]);
+
+    if (chan->mode == MAESTRO_MODE_CAPTURE) {
+        apu_set_register(chip, chan->apu[2], 5, chan->base[2]);
+        maestro_trigger_apu(chip, chan->apu[2], chan->apu_mode[2]);
+    }
+
+    if (chan->fmt & ESS_FMT_STEREO) {
+        apu_set_register(chip, chan->apu[1], 5, chan->base[1]);
+        maestro_trigger_apu(chip, chan->apu[1], chan->apu_mode[1]);
+
+        if (chan->mode == MAESTRO_MODE_CAPTURE) {
+            apu_set_register(chip, chan->apu[3], 5, chan->base[3]);
+            maestro_trigger_apu(chip, chan->apu[3], chan->apu_mode[3]);
+        }
+    }
+
+    spin_unlock_irqrestore(&chip->reg_lock, flags);
+}
+
+static inline void maestro_pcm_stop(struct maestro *chip,
+                                    struct maestro_pcm_channel *chan)
+{
+    unsigned long flags;
+
+    spin_lock_irqsave(&chip->reg_lock, flags);
+
+    maestro_trigger_apu(chip, chan->apu[0], 0);
+    maestro_trigger_apu(chip, chan->apu[1], 0);
+    if (chan->mode == MAESTRO_MODE_CAPTURE) {
+        maestro_trigger_apu(chip, chan->apu[2], 0);
+        maestro_trigger_apu(chip, chan->apu[3], 0);
+    }
+
+    spin_unlock_irqrestore(&chip->reg_lock, flags);
+}
+
+/* programming WaveCache channel control word */
+static void maestro_program_wavecache(struct maestro *chip,
+                                      struct maestro_pcm_channel *chan,
+                                      int channel, u32 addr, int capture)
+{
+    u32 tmpval = (addr - 0x10) & 0xFFF8;
+
+    if (!capture) {
+        if (!(chan->fmt & ESS_FMT_16BIT))
+            tmpval |= 4; /* 8-bit */
+        if (chan->fmt & ESS_FMT_STEREO)
+            tmpval |= 2; /* stereo */
+    }
+
+    wave_set_register(chip, chan->apu[channel] << 3, tmpval);
 }
 
 /* trigger: start/stop the hardware stream */
@@ -631,6 +1008,197 @@ static int isis_wait_control_bit7(struct maestro *chip, int want_set)
     return -ETIMEDOUT;
 }
 
+static void maestro_playback_setup(struct maestro *chip,
+                                   struct maestro_pcm_channel *chan,
+                                   struct snd_pcm_runtime *runtime)
+{
+    u32 pa;
+    int high_apu = 0;
+    int channel, apu;
+    int i, size;
+    unsigned long flags;
+    u32 freq;
+
+    chan->dma_size = snd_pcm_lib_buffer_bytes(chan->substream);
+    chan->frag_size = snd_pcm_lib_period_bytes(chan->substream);
+
+    chan->wav_shift = 1; /* Maestro always uses 16-bit words in DMA engine */
+    chan->fmt = 0;
+    if (snd_pcm_format_width(runtime->format) == 16)
+        chan->fmt |= ESS_FMT_16BIT;
+    if (runtime->channels > 1) {
+        chan->fmt |= ESS_FMT_STEREO;
+        if (chan->fmt & ESS_FMT_16BIT)
+            chan->wav_shift++;
+    }
+
+    chan->bob_freq = maestro_calc_bob_rate(chip, chan, runtime);
+
+    size = chan->dma_size >> chan->wav_shift;
+
+    if (chan->fmt & ESS_FMT_STEREO)
+        high_apu++;
+
+    for (channel = 0; channel <= high_apu; channel++) {
+        apu = chan->apu[channel];
+
+        maestro_program_wavecache(chip, chan, channel,
+                                  chan->memory->addr, 0);
+
+        pa = chan->memory->addr;
+        pa -= chip->dma.addr;
+        pa >>= 1; /* words */
+
+        pa |= 0x00400000; /* System RAM bit */
+
+        if (chan->fmt & ESS_FMT_STEREO) {
+            if (channel)
+                pa |= 0x00800000; /* right channel */
+            if (chan->fmt & ESS_FMT_16BIT)
+                pa >>= 1;
+        }
+
+        chan->base[channel] = pa & 0xFFFF;
+
+        for (i = 0; i < 16; i++)
+            apu_set_register(chip, apu, i, 0x0000);
+
+        apu_set_register(chip, apu, 4, ((pa >> 16) & 0xFF) << 8);
+        apu_set_register(chip, apu, 5, pa & 0xFFFF);
+        apu_set_register(chip, apu, 6, (pa + size) & 0xFFFF);
+        apu_set_register(chip, apu, 7, size);
+
+        apu_set_register(chip, apu, 8, 0x0000);
+        apu_set_register(chip, apu, 9, 0xD000);
+        apu_set_register(chip, apu, 11, 0x0000);
+        apu_set_register(chip, apu, 0, 0x400F);
+
+        if (chan->fmt & ESS_FMT_16BIT)
+            chan->apu_mode[channel] = 0x01; /* ESM_APU_16BITLINEAR */
+        else
+            chan->apu_mode[channel] = 0x03; /* ESM_APU_8BITLINEAR */
+
+        if (chan->fmt & ESS_FMT_STEREO) {
+            apu_set_register(chip, apu, 10,
+                             0x8F00 | (channel ? 0 : 0x10));
+            chan->apu_mode[channel] += 1; /* stereo variant */
+        } else {
+            apu_set_register(chip, apu, 10, 0x8F08);
+        }
+    }
+
+static int maestro_alloc_apu_pair(struct maestro *chip)
+{
+    int apu;
+
+    for (apu = 0; apu < NR_APUS; apu += 2) {
+        if (!chip->apu[apu] && !chip->apu[apu + 1]) {
+            chip->apu[apu] = chip->apu[apu + 1] = 1;
+            return apu;
+        }
+    }
+    return -EBUSY;
+}
+
+static void maestro_free_apu_pair(struct maestro *chip, int apu)
+{
+    if (apu < 0 || apu + 1 >= NR_APUS)
+        return;
+    chip->apu[apu] = chip->apu[apu + 1] = 0;
+}
+	
+	static int maestro_playback_open(struct snd_pcm_substream *substream)
+{
+    struct maestro *chip = snd_pcm_substream_chip(substream);
+    struct snd_pcm_runtime *runtime = substream->runtime;
+    struct maestro_pcm_channel *chan;
+    int apu1;
+
+    apu1 = maestro_alloc_apu_pair(chip);
+    if (apu1 < 0)
+        return apu1;
+
+    chan = kzalloc(sizeof(*chan), GFP_KERNEL);
+    if (!chan) {
+        maestro_free_apu_pair(chip, apu1);
+        return -ENOMEM;
+    }
+
+    chan->apu[0] = apu1;
+    chan->apu[1] = apu1 + 1;
+    chan->apu_mode[0] = 0;
+    chan->apu_mode[1] = 0;
+    chan->running = 0;
+    chan->substream = substream;
+    chan->mode = MAESTRO_MODE_PLAY;
+
+    runtime->private_data = chan;
+    runtime->hw.info = SNDRV_PCM_INFO_MMAP |
+                       SNDRV_PCM_INFO_MMAP_VALID |
+                       SNDRV_PCM_INFO_INTERLEAVED |
+                       SNDRV_PCM_INFO_BLOCK_TRANSFER |
+                       SNDRV_PCM_INFO_RESUME;
+    runtime->hw.formats = SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE;
+    runtime->hw.rates = SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000;
+    runtime->hw.rate_min = 4000;
+    runtime->hw.rate_max = 48000;
+    runtime->hw.channels_min = 1;
+    runtime->hw.channels_max = 2;
+    runtime->hw.buffer_bytes_max = chip->dma.bytes;
+    runtime->hw.period_bytes_min = 256;
+    runtime->hw.period_bytes_max = chip->dma.bytes;
+    runtime->hw.periods_min = 1;
+    runtime->hw.periods_max = 1024;
+
+    spin_lock_irq(&chip->substream_lock);
+    list_add(&chan->list, &chip->substream_list);
+    spin_unlock_irq(&chip->substream_lock);
+
+    return 0;
+}
+
+static int maestro_playback_close(struct snd_pcm_substream *substream)
+{
+    struct maestro *chip = snd_pcm_substream_chip(substream);
+    struct maestro_pcm_channel *chan;
+
+    if (!substream->runtime->private_data)
+        return 0;
+
+    chan = substream->runtime->private_data;
+
+    spin_lock_irq(&chip->substream_lock);
+    list_del(&chan->list);
+    spin_unlock_irq(&chip->substream_lock);
+
+    maestro_free_apu_pair(chip, chan->apu[0]);
+    kfree(chan);
+
+    return 0;
+}
+
+    spin_lock_irqsave(&chip->reg_lock, flags);
+    outw(1, chip->io_base + 0x04); /* clear WaveProcessor ints */
+    outw(inw(chip->io_base + ESM_PORT_HOST_IRQ) | ESM_HIRQ_DSIE,
+         chip->io_base + ESM_PORT_HOST_IRQ);
+    spin_unlock_irqrestore(&chip->reg_lock, flags);
+
+    freq = runtime->rate;
+    if (freq > 48000)
+        freq = 48000;
+    if (freq < 4000)
+        freq = 4000;
+
+    if (!(chan->fmt & ESS_FMT_16BIT) && !(chan->fmt & ESS_FMT_STEREO))
+        freq >>= 1;
+
+    freq = maestro_compute_rate(chip, freq);
+
+    maestro_apu_set_freq(chip, chan->apu[0], freq);
+    maestro_apu_set_freq(chip, chan->apu[1], freq);
+
+}
+
 /* -----------------------
    Low level index/data helpers (copied/adapted from es1968)
    ----------------------- */
@@ -850,6 +1418,52 @@ static void maestro_free_memory(struct maestro *chip, struct maestro_mem_chunk *
             kfree(buf);
         }
     }
+
+static int maestro_hw_params(struct snd_pcm_substream *substream,
+                             struct snd_pcm_hw_params *hw_params)
+{
+    struct maestro *chip = snd_pcm_substream_chip(substream);
+    struct snd_pcm_runtime *runtime = substream->runtime;
+    struct maestro_pcm_channel *chan = runtime->private_data;
+    int size = params_buffer_bytes(hw_params);
+
+    if (chan->memory) {
+        if (chan->memory->size >= size) {
+            runtime->dma_bytes = size;
+            return 0;
+        }
+        maestro_free_memory(chip, chan->memory);
+        chan->memory = NULL;
+    }
+
+    chan->memory = maestro_new_memory(chip, size);
+    if (!chan->memory)
+        return -ENOMEM;
+
+    runtime->dma_area = chan->memory->buf;
+    runtime->dma_addr = chan->memory->addr;
+    runtime->dma_bytes = size;
+
+    return 0;
+}
+
+static int maestro_hw_free(struct snd_pcm_substream *substream)
+{
+    struct maestro *chip = snd_pcm_substream_chip(substream);
+    struct snd_pcm_runtime *runtime = substream->runtime;
+    struct maestro_pcm_channel *chan = runtime->private_data;
+
+    if (!chan)
+        return 0;
+
+    if (chan->memory) {
+        maestro_free_memory(chip, chan->memory);
+        chan->memory = NULL;
+    }
+    return 0;
+}
+
+	
 }
 
 /* -------------------------
@@ -1277,10 +1891,11 @@ static int maestro_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
     spin_lock_init(&chip->reg_lock);
     spin_lock_init(&chip->substream_lock);
-    INIT_LIST_HEAD(&chip->substream_list);
     INIT_LIST_HEAD(&chip->buf_list);
+    INIT_LIST_HEAD(&chip->substream_list);
     atomic_set(&chip->bobclient, 0);
     atomic_set(&chip->running, 0);
+    chip->bob_freq = MAESTRO_BOB_FREQ;
 
     chip->pci = pdev;
     pci_set_drvdata(pdev, chip);
@@ -1321,8 +1936,32 @@ static int maestro_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	pcm->info_flags = 0;
 	strcpy(pcm->name, "Guillemot Maxi Studio ISIS");
 
-	snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_PLAYBACK, &maestro_pcm_playback_ops);
-	snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_CAPTURE, &maestro_pcm_capture_ops);
+    /* Initialize reserved DMA pool (e.g. 1024 kB = 1 MB) */
+    err = maestro_init_dmabuf(chip, 1024);
+    if (err)
+        dev_warn(&pdev->dev,
+                 "maestro: DMA pool init failed %d (continuing, no PCM)\n",
+                 err);
+
+    err = snd_card_new(&pdev->dev, -1, "maestro", THIS_MODULE, 0, &card);
+    if (err)
+        goto err_irq;
+    chip->card = card;
+    card->private_data = chip;
+
+    maestro_chip_init(chip);
+
+    /* full PCM: playback only for now */
+    if (!err) {
+        struct snd_pcm *pcm;
+        err = snd_pcm_new(card, "Maestro PCM", 0, 1, 0, &pcm);
+        if (err)
+            goto err_card;
+        chip->pcm = pcm;
+        snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_PLAYBACK,
+                        &maestro_playback_ops);
+        strcpy(pcm->name, "ESS Maestro PCM");
+    }
 
 	/* AC'97 Inizialization */
 	err = maestro_ac97_attach(chip);
