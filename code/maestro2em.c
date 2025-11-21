@@ -247,28 +247,6 @@ static int maestro_pcm_close(struct snd_pcm_substream *substream)
     return 0;
 }
 
-static const struct snd_pcm_ops maestro_pcm_playback_ops = {
-.open = maestro_pcm_open_playback,
-.close = maestro_pcm_close,
-.ioctl = snd_pcm_lib_ioctl,
-.hw_params = maestro_pcm_hw_params,
-.hw_free = maestro_pcm_hw_free,
-.prepare = maestro_pcm_prepare,
-.trigger = maestro_pcm_trigger,
-.pointer = maestro_pcm_pointer,
-};
-
-static const struct snd_pcm_ops maestro_pcm_capture_ops = {
-.open = maestro_pcm_open_capture,
-.close = maestro_pcm_close,
-.ioctl = snd_pcm_lib_ioctl,
-.hw_params = maestro_pcm_hw_params,
-.hw_free = maestro_pcm_hw_free,
-.prepare = maestro_pcm_prepare,
-.trigger = maestro_pcm_trigger,
-.pointer = maestro_pcm_pointer,
-};
-
 /* hw_params: allocate from maestro DMA pool */
 
 static int maestro_pcm_hw_params(struct snd_pcm_substream *substream,
@@ -425,6 +403,28 @@ static snd_pcm_uframes_t maestro_pcm_pointer(struct snd_pcm_substream *substream
 
     return ptr;
 }
+
+static const struct snd_pcm_ops maestro_pcm_playback_ops = {
+    .open = maestro_pcm_open_playback,
+    .close = maestro_pcm_close,
+    .ioctl = snd_pcm_lib_ioctl,
+    .hw_params = maestro_pcm_hw_params,
+    .hw_free = maestro_pcm_hw_free,
+    .prepare = maestro_pcm_prepare,
+    .trigger = maestro_pcm_trigger,
+    .pointer = maestro_pcm_pointer,
+};
+
+static const struct snd_pcm_ops maestro_pcm_capture_ops = {
+    .open = maestro_pcm_open_capture,
+    .close = maestro_pcm_close,
+    .ioctl = snd_pcm_lib_ioctl,
+    .hw_params = maestro_pcm_hw_params,
+    .hw_free = maestro_pcm_hw_free,
+    .prepare = maestro_pcm_prepare,
+    .trigger = maestro_pcm_trigger,
+    .pointer = maestro_pcm_pointer,
+};
 
 /* forward prototypes */
 static int maestro_init_dmabuf(struct maestro *chip, int total_kbytes);
