@@ -1,0 +1,153 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  start:1.1.1.1 vendor:1.1.1;
+locks    ; strict;
+comment  @ * @;
+
+
+1.1
+date     2003.07.21.11.56.38;  author pieterpalmers;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2003.07.21.11.56.38;  author pieterpalmers;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@/*
+ *  Copyright (c) by Uros Bizjak <uros@@kss-loka.si>
+ *  Control and config routines for SAM9407 chip
+ *
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ */
+
+#define __NO_VERSION__
+#include <sound/driver.h>
+#include <asm/io.h>
+#include <sound/core.h>
+#include <sam9407.h>
+
+/* acknowledges */
+#define SAM_ACK_CTL		0x60
+#define SAM_ACK_CFG		0x00
+
+
+/*
+ * get byte from control table
+ */
+int snd_sam9407_ctl_table_get(sam9407_t * sam, u8 ctl, u8 * data)
+{
+	int idx = ctl >> 1;
+
+	if (idx >= SAM_CTL_TABLE_SIZE)
+		return -EINVAL;
+
+	if (ctl & 0x01)
+		*data = sam->ctl_table[idx] >> 8;
+	else
+		*data = sam->ctl_table[idx];
+	return 0;
+}
+
+/*
+ *  send control data to SAM9407
+ *  and update control table
+ */
+int snd_sam9407_ctl_put(sam9407_t * sam, u8 ctl, u8 data)
+{
+	u8 confirm;
+	int idx, err;
+
+	idx = ctl >> 1;
+
+	if (idx >= SAM_CTL_TABLE_SIZE)
+		return -EINVAL;
+
+	/* Readback Table change notifications should be enabled! */
+	err = snd_sam9407_command(sam->pcm_io_queue, ctl,
+			      &data, 1, &confirm, 1, SAM_ACK_CTL);
+
+	if ((err < 0) || (confirm != ctl)) {
+		snd_printd ("sam9407: change control failed for ctl 0x%x\n", ctl);
+		return -EINVAL;
+	}
+
+	/* update data table word */
+	if (ctl & 0x01) {
+		sam->ctl_table[idx] &= 0x00ff;
+		sam->ctl_table[idx] |= data << 8;
+	} else {
+		sam->ctl_table[idx] &= 0xff00;
+		sam->ctl_table[idx] |= data;
+	}
+
+	return 0;
+}
+
+/*
+ * send config data to SAM9407
+ * and update control table 
+ */
+int snd_sam9407_cfg_put(sam9407_t * sam, u8 cfg, u8 data)
+{
+	int idx, err;
+
+	idx = cfg >> 1;
+
+	if (idx >= SAM_CTL_TABLE_SIZE)
+		return -EINVAL;
+
+	err = snd_sam9407_command(sam->system_io_queue, cfg,
+				  &data, 1, NULL, 0, SAM_ACK_CFG);
+
+	if (err < 0) {
+		snd_printd("sam9407: change config failed for 0x%x\n", cfg);
+		return -EINVAL;
+	}
+
+	/* update data table word */
+	if (cfg & 0x01) {
+		sam->ctl_table[idx] &= 0x00ff;
+		sam->ctl_table[idx] |= data << 8;
+	} else {
+		sam->ctl_table[idx] &= 0xff00;
+		sam->ctl_table[idx] |= data;
+	}
+
+	return 0;
+}
+@
+
+
+1.1.1.1
+log
+@Initial import.
+@
+text
+@@

@@ -1,0 +1,271 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  start:1.1.1.1 vendor:1.1.1;
+locks    ; strict;
+comment  @ * @;
+
+
+1.1
+date     2003.07.21.11.56.32;  author pieterpalmers;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2003.07.21.11.56.32;  author pieterpalmers;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@/*
+ *  Copyright (c) by Uros Bizjak <uros@@kss-loka.si>
+ *
+ *  lowlevel code for SAM9407 chip - proc interface
+ *
+ *  BUGS:
+ *    --
+ *
+ *  TODO:
+ *    --
+ *
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ */
+
+#define __NO_VERSION__
+#include <sound/driver.h>
+#include <sound/core.h>
+#include <sam9407.h>
+
+static void snd_sam9407_proc_read(snd_info_entry_t *entry, snd_info_buffer_t * buffer)
+{
+	sam9407_t *sam = snd_magic_cast(sam9407_t, entry->private_data, return);
+
+	snd_iprintf(buffer, "SAM9407\n");
+	snd_iprintf(buffer, "=======\n");
+
+	snd_iprintf(buffer, "hwdep used? %d\n",sam->hwdep_used);
+
+	snd_iprintf(buffer, "ucode loaded? %d\n",sam->ucode_loaded);
+
+	snd_iprintf(buffer, "allocated voices: %d out of %d\n", sam->voice_cnt,SAM_MAX_PCM_CHANNELS);
+
+	snd_iprintf(buffer, "total sbk entries: %d\n",sam->sbk_entries);
+
+	/* ISIS specific entries */
+	snd_iprintf(buffer, "card specific settings: %04X\n",sam->card_settings);
+
+
+}
+
+static void snd_sam9407_mmt_proc_read(snd_info_entry_t *entry, snd_info_buffer_t * buffer)
+{
+	sam9407_t *sam = snd_magic_cast(sam9407_t, entry->private_data, return);
+
+	sam9407_mmt_entry_t *mmt;
+	u32 mmt_addr;
+
+	int slot;
+	int err;
+
+	if (!sam->ucode_loaded) {
+		snd_iprintf(buffer, "--sam9407 microcode not loaded--\n");
+		return;
+	}
+
+	/* allocate MM table space */
+	mmt = kmalloc(sam->mmt_entries * sizeof(sam9407_mmt_entry_t), GFP_KERNEL);
+	if (mmt == NULL) {
+		snd_iprintf(buffer, "--can not allocate buffer--\n");
+		return;
+	}
+ 
+	spin_lock(&sam->mmt_lock);
+	err = snd_sam9407_mmt_get_addr(sam, &mmt_addr);
+	if (err < 0)
+		goto __mmt_err;
+
+	err =  snd_sam9407_read(sam, (u16 *) mmt, mmt_addr,
+				sam->mmt_entries * 3);
+ __mmt_err:
+	spin_unlock(&sam->mmt_lock);
+	if (err < 0) {
+		kfree(mmt);
+		snd_iprintf(buffer, "--can not read MM table--\n");
+		return;
+	}
+
+	for (slot = 0; slot < sam->mmt_entries; slot++) {
+		snd_iprintf(buffer, "0x%x, 0x%x\n",
+			    mmt[slot].id, (mmt[slot].addr[1] << 16) | mmt[slot].addr[0]);
+		if ((mmt[slot].id & SAM_MMT_ID_MASK) == SAM_MMT_ID_EOM)
+			break;
+	}
+	snd_iprintf(buffer, "total entries in mmt: %d\n",slot);
+	snd_iprintf(buffer, "mmt address: %04X\n",sam->mmt_addr);
+
+
+	kfree(mmt);
+		
+#if 0
+	printk("MIDI sound bank definition\n");
+	for (i = MMT_size; i < MMT_size + SBK_size; i+= 5) {
+		printk("%i\n", chip->mm_table[i+4]); 
+	}
+#endif
+
+}
+
+static void snd_sam9407_ctl_proc_read(snd_info_entry_t *entry, snd_info_buffer_t * buffer)
+{
+	sam9407_t *sam = snd_magic_cast(sam9407_t, entry->private_data, return);
+
+	u16 *ctl;
+	u32 ctl_addr = 0;
+
+	u8 data;
+
+	int slot;
+	int err;
+
+	if (!sam->ucode_loaded) {
+		snd_iprintf(buffer, "--sam9407 microcode not loaded--\n");
+		return;
+	}
+
+	/* allocate CTL table space */
+	ctl = (u16 *) kmalloc(sizeof(u16) * SAM_CTL_TABLE_SIZE, GFP_KERNEL);
+	if (ctl == NULL) {
+		snd_iprintf(buffer, "--can not allocate buffer--\n");
+		return;
+	}
+
+	spin_lock(&sam->mmt_lock);
+
+	/* get CTL table address */
+	for (slot = 0; slot < sam->mmt_entries; slot++) {
+		if ((sam->mmt[slot].id & SAM_MMT_ID_MASK) == SAM_MMT_ID_EOM)
+			break;
+		else if ((sam->mmt[slot].id & SAM_MMT_ID_MASK) == SAM_MMT_ID_CTRL_TBL)
+			ctl_addr = (sam->mmt[slot].addr[1] << 16) | sam->mmt[slot].addr[0];
+	}
+
+	if (ctl_addr == 0) {
+		err = -EIO;
+		goto __ctl_err;
+	}
+
+	write_lock(&sam->ctl_rwlock);
+	err =  snd_sam9407_read(sam, ctl, ctl_addr,
+				SAM_CTL_TABLE_SIZE);
+	write_unlock(&sam->ctl_rwlock);
+
+ __ctl_err:
+	spin_unlock(&sam->mmt_lock);
+	if (err < 0) {
+		kfree(ctl);
+		snd_iprintf(buffer, "--can not read CTL table--\n");
+		return;
+	}
+
+        for (slot = 0; slot < SAM_CTL_TABLE_SIZE << 1; slot++) {
+		snd_sam9407_ctl_table_get(sam, slot, &data);
+		snd_iprintf(buffer, "0x%x: 0x%x\n", slot, data);
+	}
+
+	kfree(ctl);
+}
+
+int snd_sam9407_proc_init(sam9407_t * sam)
+{
+	snd_info_entry_t *entry;
+	
+	if ((entry = snd_info_create_card_entry(sam->card, "sam9407",
+						sam->card->proc_root)) != NULL) {
+		entry->content = SNDRV_INFO_CONTENT_TEXT;
+		entry->private_data = sam;
+		entry->mode = S_IFREG | S_IRUGO | S_IWUSR;
+		entry->c.text.read_size = 8192;
+		entry->c.text.read = snd_sam9407_proc_read;
+		if (snd_info_register(entry) < 0) {
+			snd_info_free_entry(entry);
+			entry = NULL;
+		}
+	}
+	sam->proc_entry = entry;
+	if ((entry = snd_info_create_card_entry(sam->card, "sam9407_mmt",
+						sam->card->proc_root)) != NULL) {
+		entry->content = SNDRV_INFO_CONTENT_TEXT;
+		entry->private_data = sam;
+		entry->mode = S_IFREG | S_IRUGO | S_IWUSR;
+		entry->c.text.read_size = 4096;
+		entry->c.text.read = snd_sam9407_mmt_proc_read;
+		if (snd_info_register(entry) < 0) {
+			snd_info_free_entry(entry);
+			entry = NULL;
+		}
+	}
+	sam->proc_entry_mmt = entry;
+	if ((entry = snd_info_create_card_entry(sam->card, "sam9407_ctl",
+						sam->card->proc_root)) != NULL) {
+		entry->content = SNDRV_INFO_CONTENT_TEXT;
+		entry->private_data = sam;
+		entry->mode = S_IFREG | S_IRUGO | S_IWUSR;
+		entry->c.text.read_size = 4096;
+		entry->c.text.read = snd_sam9407_ctl_proc_read;
+		if (snd_info_register(entry) < 0) {
+			snd_info_free_entry(entry);
+			entry = NULL;
+		}
+	}
+	sam->proc_entry_ctl = entry;
+	return 0;
+}
+
+int snd_sam9407_proc_done(sam9407_t * sam)
+{
+	if (sam->proc_entry_ctl) {
+		snd_info_unregister(sam->proc_entry_ctl);
+		sam->proc_entry_ctl = NULL;
+	}
+	if (sam->proc_entry_mmt) {
+		snd_info_unregister(sam->proc_entry_mmt);
+		sam->proc_entry_mmt = NULL;
+	}
+	if (sam->proc_entry) {
+		snd_info_unregister(sam->proc_entry);
+		sam->proc_entry = NULL;
+	}
+	return 0;
+}
+@
+
+
+1.1.1.1
+log
+@Initial import.
+@
+text
+@@

@@ -1,0 +1,70 @@
+head	1.2;
+access;
+symbols
+	start:1.1.1.1 vendor:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	2003.07.22.22.46.00;	author pieterpalmers;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2003.07.21.11.56.16;	author pieterpalmers;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	2003.07.21.11.56.16;	author pieterpalmers;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Working alpha driver for the PCI46.BIN firmware.
+Everything works but for the capture streams of the ISIS (which also don't work in the windows driver's 'multimedia-mode')
+Synth isn't implemented either.
+
+PCM Devices:
+ playback: 0 = maestro PCM (mixed with SAM 1/2 by firmware)
+           1 = SAM 1/2 output
+           2 = SAM 3/4 output
+ capture:  0 = maestro PCM capture
+
+MIDI input/output should work
+Joystick should work
+@
+text
+@make
+make install
+rmmod -r snd-isis
+#maxiinit /etc/isis/isis.bin
+maxiinit /etc/isis/pci64.bin
+modprobe snd-isis
+dmesg -c >log
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d4 1
+@
+
+
+1.1.1.1
+log
+@Initial import.
+@
+text
+@@

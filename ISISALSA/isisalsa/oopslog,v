@@ -1,0 +1,186 @@
+head	1.2;
+access;
+symbols
+	start:1.1.1.1 vendor:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	2003.07.22.22.46.00;	author pieterpalmers;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2003.07.21.11.56.22;	author pieterpalmers;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	2003.07.21.11.56.22;	author pieterpalmers;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@Working alpha driver for the PCI46.BIN firmware.
+Everything works but for the capture streams of the ISIS (which also don't work in the windows driver's 'multimedia-mode')
+Synth isn't implemented either.
+
+PCM Devices:
+ playback: 0 = maestro PCM (mixed with SAM 1/2 by firmware)
+           1 = SAM 1/2 output
+           2 = SAM 3/4 output
+ capture:  0 = maestro PCM capture
+
+MIDI input/output should work
+Joystick should work
+@
+text
+@Unable to handle kernel NULL pointer dereference at virtual address 0000001c
+ printing eip:
+e1ed2c1b
+*pde = 00000000
+Oops: 0000
+CPU:    0
+EIP:    0010:[<e1ed2c1b>]    Tainted: P 
+EFLAGS: 00010202
+eax: cf5b05c4   ebx: d0788814   ecx: d0788814   edx: 00000000
+esi: d6d28a14   edi: 00000001   ebp: d6d28b60   esp: cd29ff74
+ds: 0018   es: 0018   ss: 0018
+Process alsamixer (pid: 2289, stackpage=cd29f000)
+Stack: e1f2a076 cf5b05c4 d0788814 000002c4 00000000 fffffff3 d67096e4 c2c45512
+       ffffffe7 cd29ffbc c0147d89 d6d28a14 bfffebe0 c2c45512 bfffebe0 cd29e000 
+       0805aed0 bfffec20 bfffeb68 c010905f 00000003 c2c45512 bfffebe0 0805aed0
+Call Trace:    [<e1f2a076>] [<c0147d89>] [<c010905f>]
+
+Code: 0f b6 42 1c 89 41 44 0f b6 42 1d 89 41 48 31 c0 c3 8d 74 26 
+ 
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d1 3
+a3 16
+ksymoops 2.4.5 on i686 2.4.20-LL.  Options used
+     -V (default)
+     -k /proc/ksyms (default)
+     -l /proc/modules (default)
+     -o /lib/modules/2.4.20-LL/ (default)
+     -m /boot/System.map-2.4.20-LL (default)
+
+Warning: You did not tell me where to find symbol information.  I will
+assume that the log matches the kernel and modules that are running
+right now and I'll use the default options above for symbol resolution.
+If the current kernel and/or modules do not match the log, you can get
+more accurate output by telling me the kernel version and where to find
+map, modules, ksyms etc.  ksymoops -h explains the options.
+
+Unable to handle kernel paging request at virtual address 063b055c
+e08ef442
+d7 4
+a10 5
+EIP:    0010:[<e08ef442>]    Tainted: P 
+Using defaults from ksymoops -t elf32-i386 -a i386
+EFLAGS: 00010206
+eax: 063b0528   ebx: d1619384   ecx: 00000000   edx: d1619384
+esi: d161a3b4   edi: d161a494   ebp: db4e9b20   esp: d1cc9d2c
+d12 5
+a16 75
+Process modprobe (pid: 943, stackpage=d1cc9000)
+Stack: 00000000 e1de7e5b d6b85618 d701df28 e08ef1a7 d1619384 d161a3b4 e1de8f81 
+       d1619384 e1deb7f0 063b0528 d161a3b4 d1cc9e88 e1de7feb d161a3b4 00000001 
+       00000000 00000000 00000000 00000000 00000000 00000000 00000000 db4e9b20 
+Call Trace:    [<e1de7e5b>] [<e08ef1a7>] [<e1de8f81>] [<e1deb7f0>] [<e1de7feb>]
+  [<e1eb56fc>] [<e1eb2130>] [<e1eb24c0>] [<e1eb25f0>] [<e1eb2720>] [<e1eb2570>]
+  [<e1eb26a0>] [<e1eb27b0>] [<e1eb2830>] [<e1eb28c0>] [<e1eb21b0>] [<e1eb2360>]
+  [<e1eb2a40>] [<e1eb2190>] [<e1eb2140>] [<e1eb6553>] [<e1eb69ff>] [<e1eb7e20>]
+  [<e1eb7fa0>] [<c01f3214>] [<e1eb7e20>] [<e1eb7fa0>] [<c01f32ae>] [<e1eb7fa0>]
+  [<e1eb66d7>] [<e1eb7fa0>] [<c011a3b0>] [<e1eb2060>] [<e1eb6f28>] [<e1eb6ee0>]
+  [<e1eb2060>] [<c010905f>]
+Code: 8b 50 34 be f0 8f 8f e0 89 f1 ff 0d f0 8f 8f e0 0f 88 80 02 
+
+
+>>EIP; e08ef442 <[snd]snd_info_register+22/f0>   <=====
+
+>>eax; 063b0528 Before first symbol
+>>ebx; d1619384 <_end+112c7098/204bad94>
+>>edx; d1619384 <_end+112c7098/204bad94>
+>>esi; d161a3b4 <_end+112c80c8/204bad94>
+>>edi; d161a494 <_end+112c81a8/204bad94>
+>>ebp; db4e9b20 <_end+1b197834/204bad94>
+>>esp; d1cc9d2c <_end+11977a40/204bad94>
+
+Trace; e1de7e5b <[snd-sam9407]snd_sam9407_pcm+bb/120>
+Trace; e08ef1a7 <[snd]snd_info_create_card_entry+17/40>
+Trace; e1de8f81 <[snd-sam9407]snd_sam9407_proc_init+51/140>
+Trace; e1deb7f0 <[snd-sam9407]__module_using_checksums+409/2759>
+Trace; e1de7feb <[snd-sam9407]snd_sam9407_create+12b/200>
+Trace; e1eb56fc <[snd-isis]snd_isis_sam+bc/f0>
+Trace; e1eb2130 <[snd-isis]isis_sam_reset+0/10>
+Trace; e1eb24c0 <[snd-isis]isis_sam_write_control+0/b0>
+Trace; e1eb25f0 <[snd-isis]isis_sam_write_data8+0/b0>
+Trace; e1eb2720 <[snd-isis]isis_sam_write_data16+0/90>
+Trace; e1eb2570 <[snd-isis]isis_sam_read_control+0/80>
+Trace; e1eb26a0 <[snd-isis]isis_sam_read_data8+0/80>
+Trace; e1eb27b0 <[snd-isis]isis_sam_read_data16+0/80>
+Trace; e1eb2830 <[snd-isis]isis_sam_burstwrite_data16+0/90>
+Trace; e1eb28c0 <[snd-isis]isis_sam_burstread_data16+0/90>
+Trace; e1eb21b0 <[snd-isis]isis_sam_enableInt+0/1b0>
+Trace; e1eb2360 <[snd-isis]isis_sam_disableInt+0/160>
+Trace; e1eb2a40 <[snd-isis]isis_sam_init+0/220>
+Trace; e1eb2190 <[snd-isis]isis_sam_getmemsize+0/20>
+Trace; e1eb2140 <[snd-isis]isis_sam_allocPCMBuffers+0/50>
+Trace; e1eb6553 <[snd-isis]snd_isis_probe+1f3/2f0>
+Trace; e1eb69ff <[snd-isis]__module_parm_pcm_substreams_p+6/f>
+Trace; e1eb7e20 <[snd-isis]snd_isis_ids+0/38>
+Trace; e1eb7fa0 <[snd-isis]driver+0/27>
+Trace; c01f3214 <pci_announce_device+34/70>
+Trace; e1eb7e20 <[snd-isis]snd_isis_ids+0/38>
+Trace; e1eb7fa0 <[snd-isis]driver+0/27>
+Trace; c01f32ae <pci_register_driver+5e/70>
+Trace; e1eb7fa0 <[snd-isis]driver+0/27>
+Trace; e1eb66d7 <[snd-isis]alsa_card_isis_init+17/60>
+Trace; e1eb7fa0 <[snd-isis]driver+0/27>
+Trace; c011a3b0 <sys_init_module+510/660>
+Trace; e1eb2060 <[ide-cd].data.end+67e9d/67ebd>
+Trace; e1eb6f28 <[snd-isis]__module_parm_desc_clock+400/1218>
+Trace; e1eb6ee0 <[snd-isis]__module_parm_desc_clock+3b8/1218>
+Trace; e1eb2060 <[ide-cd].data.end+67e9d/67ebd>
+Trace; c010905f <system_call+33/38>
+
+Code;  e08ef442 <[snd]snd_info_register+22/f0>
+00000000 <_EIP>:
+Code;  e08ef442 <[snd]snd_info_register+22/f0>   <=====
+   0:   8b 50 34                  mov    0x34(%eax),%edx   <=====
+Code;  e08ef445 <[snd]snd_info_register+25/f0>
+   3:   be f0 8f 8f e0            mov    $0xe08f8ff0,%esi
+Code;  e08ef44a <[snd]snd_info_register+2a/f0>
+   8:   89 f1                     mov    %esi,%ecx
+Code;  e08ef44c <[snd]snd_info_register+2c/f0>
+   a:   ff 0d f0 8f 8f e0         decl   0xe08f8ff0
+Code;  e08ef452 <[snd]snd_info_register+32/f0>
+  10:   0f 88 80 02 00 00         js     296 <_EIP+0x296>
+
+d18 2
+a19 1
+1 warning issued.  Results may not be reliable.
+@
+
+
+1.1.1.1
+log
+@Initial import.
+@
+text
+@@

@@ -1,0 +1,58 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  start:1.1.1.1 vendor:1.1.1;
+locks    ; strict;
+comment  @# @;
+
+
+1.1
+date     2003.07.21.11.56.27;  author pieterpalmers;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2003.07.21.11.56.27;  author pieterpalmers;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@0x0, 0x200000
+0x2, 0x0
+0x6, 0x680e
+0x2, 0x684e
+0x3, 0x6bb5
+0x1, 0x6d5d
+0x2, 0x6d5e
+0x20, 0x12d00
+0x120, 0x14d10
+0x820, 0x16d20
+0x920, 0x18d20
+0xa20, 0x1ad20
+0xb20, 0x1cd20
+0x1, 0x1ed20
+0x2, 0x200000
+0x2, 0x1000000
+0x2, 0x1800000
+0xffff, 0x200000
+total entries in mmt: 17
+mmt address: 6BB5
+@
+
+
+1.1.1.1
+log
+@Initial import.
+@
+text
+@@

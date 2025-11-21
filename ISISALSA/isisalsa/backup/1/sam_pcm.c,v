@@ -1,0 +1,792 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  start:1.1.1.1 vendor:1.1.1;
+locks    ; strict;
+comment  @ * @;
+
+
+1.1
+date     2003.07.21.11.56.25;  author pieterpalmers;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2003.07.21.11.56.25;  author pieterpalmers;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@/*
+ *  Copyright (c) by Uros Bizjak <uros@@kss-loka.si>
+ *  PCM routines for SAM9407 chip
+ *
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ */
+#define __NO_VERSION__
+#include <sound/driver.h>
+#include <asm/io.h>
+#include <linux/delay.h>
+#include <sound/core.h>
+#include <sound/pcm.h>
+#include <sound/pcm_params.h>
+#include <sam9407.h>
+
+#define chip_t sam9407_t
+static int snd_sam_pcm_mixer_free(sam9407_t *sam, sam9407_voice_t *voice, snd_pcm_substream_t *substream);
+static int snd_sam9407_pcm(sam9407_t *sam, int device, snd_pcm_t ** rpcm);
+static int snd_sam9407_pcm_mixer_build(sam9407_t *sam, sam9407_voice_t *voice, snd_pcm_substream_t *substream);
+static void snd_sam9407_async_pcm_open(sam9407_t *sam, sam9407_voice_t * voice);
+
+
+static int snd_sam9407_playback_hw_params(snd_pcm_substream_t * substream,
+				  snd_pcm_hw_params_t * hw_params)
+{
+	sam9407_t *sam = snd_pcm_substream_chip(substream);
+	snd_pcm_runtime_t *runtime = substream->runtime;
+	sam9407_voice_t *voice = (sam9407_voice_t *) runtime->private_data;
+
+	u16 id;
+	size_t words;
+
+	unsigned long flags;
+	int err;
+
+	snd_printk("TEST (hw_params) voice %i\n", voice->number);
+
+	if ((err = snd_pcm_lib_malloc_pages(substream, params_buffer_bytes(hw_params))) < 0) {
+		snd_printk("could not allocate memory!\n");
+
+		return err;
+	}
+
+	id = SAM_MMT_ID_PCM & (voice->number << 8);
+
+	words = runtime->dma_bytes >> 1;
+
+	/* allocate 2x buffer + some magic overhead */
+	words <<= 1;
+	words += SAM_PLAY_OVERHEAD;
+
+	spin_lock(sam->mmt_lock);
+
+	/* paranoia: release sam9407 buffer */
+	if (voice->buf_addr)
+		snd_sam9407_mem_free(sam, id);
+
+	snd_printk(" trying to allocate SAM memory\n");
+	err = snd_sam9407_mem_alloc(sam, id, &voice->buf_addr, words,
+			        SAM_ALIGN_EVEN, SAM_BOUNDARY_MASK_64K);
+	spin_unlock(sam->mmt_lock);
+	if (err < 0) {
+		return err;
+	}
+	snd_printk("TEST (hw_params leave) voice %i, allocated %i words in SAM memory\n",
+	       voice->number, words);
+
+	return 0;
+}
+
+
+static int snd_sam9407_playback_hw_free(snd_pcm_substream_t * substream)
+{
+	sam9407_t *sam = snd_pcm_substream_chip(substream);
+	snd_pcm_runtime_t *runtime = substream->runtime;
+	sam9407_voice_t *voice = (sam9407_voice_t *) runtime->private_data;
+	u16 id;
+	signed long end_time;
+
+	snd_printk("TEST (hw_free) voice %i %p\n", voice->number, voice);
+
+	id = SAM_MMT_ID_PCM & (voice->number<< 8);
+
+	/* wait here max 500ms for chip to finish playback */
+	end_time = jiffies + (HZ );
+	do {
+		if(test_bit(SAM_VOICE_PLAYING, &voice->status)) {
+			set_current_state(TASK_UNINTERRUPTIBLE);
+			schedule_timeout(1);
+		} else {
+			goto __released;
+		}
+	} while (end_time - (signed long) jiffies >= 0);
+	snd_printk("sam9407: voice %d close ACK timeout\n", voice->number);
+
+ __released:
+
+	/* release SAM PCM buffer */
+	if (voice->buf_addr) {
+		spin_lock(sam->mmt_lock);
+		snd_sam9407_mem_free(sam, id);
+		spin_unlock(sam->mmt_lock);
+		voice->buf_addr = 0;
+	}
+
+	snd_pcm_lib_free_pages(substream);
+
+	printk("TEST (hw_free leave) voice %i\n", voice->number);
+	return 0;
+}
+
+static int snd_sam9407_playback_prepare(snd_pcm_substream_t * substream)
+{
+	sam9407_t *sam = snd_pcm_substream_chip(substream);
+	snd_pcm_runtime_t *runtime = substream->runtime;
+	sam9407_voice_t *voice = (sam9407_voice_t *) runtime->private_data;
+
+	u8 format;
+	u8 bytes[4];
+
+	format = runtime->channels > 1 ? SAM_PCM_STEREO : SAM_PCM_MONO;
+	format |= snd_pcm_format_width(runtime->format) > 8 ? SAM_PCM_16BIT : SAM_PCM_8BIT;
+	
+	snd_sam9407_async_pcm_open(sam, voice);
+
+	bytes[0] = voice->number;
+	bytes[1] = format;
+	bytes[2] = (u8) runtime->rate;
+	bytes[3] = (u8) (runtime->rate >> 8);
+
+	/* send command, but ignore acknowledge */
+	snd_sam9407_command(sam, NULL, SAM_CMD_W_OPEN,
+			bytes, 4, NULL, 0, -1);
+
+	return 0;
+}
+
+
+static int snd_sam9407_trigger(snd_pcm_substream_t *substream,
+			 int cmd)
+				    
+{
+	sam9407_t *sam = snd_pcm_substream_chip(substream);
+	sam9407_voice_t *voice = (sam9407_voice_t *) substream->runtime->private_data;
+
+	u8 channel = voice->channel;
+	u8 command;
+
+	switch (cmd) {
+	case SNDRV_PCM_TRIGGER_START:
+		snd_printk("Start TRIGGER\n");
+		set_bit(SAM_VOICE_PLAYING, &voice->status);
+		command = SAM_CMD_W_START;
+		break;
+	case SNDRV_PCM_TRIGGER_STOP:
+		snd_printk("Stop TRIGGER\n");
+		command = SAM_CMD_W_CLOSE;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	/* HACK: sam9407 has no STOP trigger command. We send SAM_W_CLOSE
+	   and wait for voice close ACK in irq handler */
+	snd_sam9407_command(sam, NULL, command,
+			&channel, 1, NULL, 0, -1);
+	return 0;
+}
+
+static snd_pcm_uframes_t snd_sam9407_pointer(snd_pcm_substream_t * substream)
+{
+	sam9407_voice_t *voice = (sam9407_voice_t *) substream->runtime->private_data;
+	snd_printk(" position request (%d)\n",voice->hwptr);
+
+	return voice->hwptr;
+}
+
+static snd_pcm_hardware_t snd_sam9407_playback =
+{
+	.info =			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
+				 SNDRV_PCM_INFO_BLOCK_TRANSFER |
+				 SNDRV_PCM_INFO_MMAP_VALID),
+	.formats =		SNDRV_PCM_FMTBIT_S16_LE  /* | SNDRV_PCM_FMTBIT_U8 */,
+	.rates =		SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
+	.rate_min =		4000,
+	.rate_max =		48000,
+	.channels_min =		1,
+	.channels_max =		2,
+	.buffer_bytes_max =	SAM_MAX_BUFFER_SIZE,
+	.period_bytes_min =	4,  /* one stereo word (4 bytes) */
+	.period_bytes_max =	(((SAM_MAX_TRANSFER_SIZE - SAM_PLAY_OVERHEAD) >> 1) << 1),
+	.periods_min =		1,
+	.periods_max =		1024,
+	.fifo_size =		0,
+};
+
+#if 0
+static snd_pcm_hardware_t snd_sam9407_capture =
+{
+	.info =			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
+				 SNDRV_PCM_INFO_BLOCK_TRANSFER |
+				 SNDRV_PCM_INFO_MMAP_VALID),
+	.formats =		SNDRV_PCM_FMTBIT_S16_LE  /* | SNDRV_PCM_FMTBIT_U8 */,
+	.rates =		SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
+	.rate_min =		4000,
+	.rate_max =		48000,
+	.channels_min =		1,
+	.channels_max =		2,
+	.buffer_bytes_max =	SAM_MAX_BUFFER_SIZE,
+	.period_bytes_min =	4,  /* one stereo word (4 bytes) */
+	.period_bytes_max =	SAM_MAX_TRANSFER_SIZE,
+	.periods_min =		1,
+	.periods_max =		1024,
+	.fifo_size =		0,
+};
+#endif
+
+static int snd_sam9407_channel_alloc(sam9407_t *sam)
+{
+	int idx;
+
+	if (sam->voice_cnt >= SAM_MAX_PCM_CHANNELS)
+		return -1;
+	for (idx = SAM_MAX_PCM_CHANNELS-1; idx >= 0; idx--) {
+		if (!(sam->voice_map & (1 << idx))) {
+			sam->voice_map |= 1 << idx;
+			sam->voice_cnt++;
+			return idx;
+		}
+	}
+	return -1;
+}
+
+static void snd_sam9407_channel_free(sam9407_t *sam, int voice)
+{
+	if (sam->voice_map & (1 << voice)) {
+		sam->voice_map &= ~(1 << voice);
+		sam->voice_cnt--;
+	}
+}
+
+sam9407_voice_t *snd_sam9407_voice_alloc(sam9407_t * sam)
+{
+	sam9407_voice_t *voice;
+	int idx;
+
+	idx = snd_sam9407_channel_alloc(sam);
+	if(idx < 0)
+		return NULL;
+
+	voice = &sam->voices[idx];
+	voice->number=idx;
+	clear_bit(SAM_VOICE_PLAYING, &voice->status);
+	set_bit(SAM_VOICE_IN_USE, &voice->status);
+	voice->pcm = 1;
+	voice->hwptr = 0;
+	snd_printk("Allocated voice: %d %p\n", voice->number, voice);
+
+	return voice;
+}
+
+void snd_sam9407_voice_free(sam9407_t * sam, sam9407_voice_t *voice)
+{
+	if (voice == NULL)
+		return;
+
+	voice->pcm = 0;
+	clear_bit(SAM_VOICE_IN_USE, &voice->status);
+	snd_sam9407_channel_free(sam, voice->number);
+	snd_printk("Freed voice: %d %p\n", voice->number, voice);
+}
+
+static int snd_sam9407_playback_open(snd_pcm_substream_t * substream)
+{
+	sam9407_t *sam = snd_pcm_substream_chip(substream);
+	snd_pcm_runtime_t *runtime = substream->runtime;
+	sam9407_voice_t *voice;
+
+	unsigned long flags;
+
+	spin_lock_irqsave(&sam->voice_lock, flags);
+
+	/* disable config controls */
+	//if(sam->voice_cnt == 0)
+	//	snd_sam9407_disable_config_ctl(sam);
+
+	voice = snd_sam9407_voice_alloc(sam);
+	if (voice == NULL) {
+		spin_unlock_irqrestore(&sam->voice_lock, flags);
+		return -EAGAIN;
+	}
+	spin_unlock_irqrestore(&sam->voice_lock, flags);
+
+	//snd_sam_pcm_mixer_build(sam, voice, substream);
+	voice->substream = substream;
+	runtime->private_data = voice;
+	runtime->hw = snd_sam9407_playback;
+
+#if 0
+	/* FIXME: check this */
+	snd_pcm_set_sync(substream);
+	snd_pcm_hw_constraint_minmax(runtime, SNDRV_PCM_HW_PARAM_BUFFER_SIZE, 0, 64*1024);
+#endif
+
+	return 0;
+}
+
+static int snd_sam9407_playback_close(snd_pcm_substream_t * substream)
+{
+	sam9407_t *sam = snd_pcm_substream_chip(substream);
+	snd_pcm_runtime_t *runtime = substream->runtime;
+	sam9407_voice_t *voice = (sam9407_voice_t *) runtime->private_data;
+
+	unsigned long flags;
+
+	/* release PCM mixer element */
+	//snd_sam9407_pcm_mixer_free(sam, voice, substream);
+
+	spin_lock_irqsave(&sam->voice_lock, flags);
+	snd_sam9407_voice_free(sam, voice);
+
+	/* enable config controls */
+	//if(sam->voice_cnt == 0)
+	//	snd_sam9407_enable_config_ctl(sam);
+
+	spin_unlock_irqrestore(&sam->voice_lock, flags);
+
+	return 0;
+}
+
+static snd_pcm_ops_t snd_sam9407_playback_ops = {
+	.open =			snd_sam9407_playback_open,
+	.close =		snd_sam9407_playback_close,
+	.ioctl =		snd_pcm_lib_ioctl,
+	.hw_params =	snd_sam9407_playback_hw_params,
+	.hw_free =	snd_sam9407_playback_hw_free,
+	.prepare =		snd_sam9407_playback_prepare,
+	.trigger =		snd_sam9407_trigger,
+	.pointer =		snd_sam9407_pointer
+
+};
+/*
+static snd_pcm_ops_t snd_sam9407_capture_ops = {
+	.open =			snd_sam9407_capture_open,
+	.close =		snd_sam9407_capture_close,
+	.ioctl =		snd_pcm_lib_ioctl,
+	.hw_params =	snd_sam9407_capture_hw_params,
+	.hw_free =	snd_sam9407_capture_hw_free,
+	.prepare =		snd_sam9407_capture_prepare,
+	.trigger =		snd_sam9407_trigger,
+	.pointer =		snd_sam9407_pointer
+};*/
+
+
+/* ========== */
+
+static void snd_sam9407_async_pcm_open(sam9407_t *sam, sam9407_voice_t * voice)
+{
+#if 0
+	/* FIXME: program PCM mixer here ? */
+	snd_sam9407_pcm_mixer_t *mix = &sam->pcm_mixer[substream->number];
+#endif
+	if (!(test_bit(SAM_VOICE_IN_USE, &voice->status)))
+		snd_printk("sam9407: wrong PCM channel open ACK\n");
+
+	return;
+}
+
+static void snd_sam9407_async_pcm_close(sam9407_t *sam, sam9407_voice_t * voice)
+{
+	snd_printk("Closing voice %d %p\n",voice->number, voice);
+	clear_bit(SAM_VOICE_PLAYING, &voice->status);
+}
+
+static void snd_sam9407_async_pcm_update(sam9407_t *sam,sam9407_voice_t *voice)
+{
+
+
+	snd_pcm_substream_t *substream;
+	snd_pcm_runtime_t *runtime;
+
+	u16 *hwbuf;
+	snd_pcm_uframes_t hwoff;
+	unsigned int wcount;
+
+	if (voice == NULL)
+		return;
+
+	substream = voice->substream;
+	runtime = substream->runtime;
+
+	/* FIXME: Is this OK? */
+	hwoff = runtime->hw_ptr_interrupt;
+	snd_printk(" Current HW offset: %d frames = %d bytes\n", hwoff, frames_to_bytes(runtime, hwoff));
+
+	hwbuf = (u16 *) runtime->dma_area;
+       	hwbuf += frames_to_bytes(runtime, hwoff) >> 1;
+
+	/* word transfer count */
+	wcount = snd_pcm_lib_period_bytes(substream);
+	wcount >>= 1;
+
+	snd_printk(" transfer 1 period: %d bytes = %d words\n", snd_pcm_lib_period_bytes(substream), wcount);
+
+
+	/* transfer to/from sam9407 buffers */
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
+//		outsw(SAM9407P(sam, DATA16), hwbuf, wcount);
+		sam->writeData16Burst(sam, hwbuf, wcount);
+	else
+		sam->readData16Burst(sam, hwbuf, wcount);
+//		insw(SAM9407P(sam, DATA16), hwbuf, wcount);
+	snd_printk(" Burstwrite done. Sending EOT.\n");
+
+	snd_sam9407_command(sam, NULL, SAM_END_XFER,
+			&voice->channel, 1, NULL, 0, -1);
+	
+	snd_printk(" EOT sent.\n");
+
+	/* update hardware pointer mirror */
+	voice->hwptr = runtime->hw_ptr_interrupt + runtime->period_size;
+	snd_printk(" voice hwptr updated\n");
+
+	snd_pcm_period_elapsed(substream);
+	snd_printk(" period_elapsed.\n");
+
+}
+
+
+/* async audio interrupt handler */
+void snd_sam9407_async_audio_irq(sam9407_t *sam, u8 data)
+{
+	sam9407_voice_t *voice;
+	int channel;
+
+	enum { OPEN, CLOSE, UPDATE } what = UPDATE;
+
+#if 1
+	snd_printk("sam9407: async audio IRQ received, data 0x%x\n", data);
+#endif
+	/* ignore PCM channel open acknowledges - we use proper channel accounting */
+	if (data == SAM_ACK)
+		return;
+	if (data == SAM_NAK) {
+		snd_printk("sam9407: PCM channel open NAK received\n");
+		return;
+	}
+
+	if ((data &= 0xF0)==SAM_WAVE_ACK_CLOSE) {
+		channel = data & 0x0F;
+		what = CLOSE;
+//	} else if (data >= SAM_WAVE_ACK_OPEN) {
+//		channel = data - SAM_WAVE_ACK_OPEN;
+//		what = OPEN;
+	} else {
+		channel = data;
+	}
+
+	if (channel >= SAM_MAX_PCM_CHANNELS) {
+		snd_printk("sam9407: wrong PCM channel requested\n");
+		return;
+	}
+
+	voice = &sam->voices[channel];
+	if (voice == NULL)
+		return;
+
+
+	switch (what) {
+	case OPEN:
+		snd_printk("sam9407: open interrupt\n");
+		//snd_sam9407_async_pcm_open(sam, voice);
+		break;
+	case CLOSE:
+		snd_printk("sam9407: close interrupt\n");
+		snd_sam9407_async_pcm_close(sam, voice);
+		break;
+	default:
+		snd_printk("sam9407: update interrupt\n");
+		snd_sam9407_async_pcm_update(sam, voice);
+	}
+
+}
+
+
+
+/* ========== */
+
+/*
+ *  send control data to SAM9407
+ *  and update control table
+ * -> ctl_table_rwlock should be writelocked
+ */
+static int snd_sam9407_pcm_ctl_put(sam9407_t * sam, int chan, u8 ctl, u16 val)
+{
+/*	u8 data[3];
+	int err;
+
+	data[0] = chan;
+	data[1] = val;
+	data[2] = val >> 8;
+	
+	err = snd_sam9407_command(sam, NULL, ctl, &data, 3, NULL, 0, -1);
+	if (err < 0) {
+		snd_printk("sam9407: change PCM control failed, ctl = 0x%x\n", ctl);
+		return -EIO;
+	}*/
+	return 0;
+}
+
+static int snd_sam9407_pcm_vol_info(snd_kcontrol_t *kcontrol, snd_ctl_elem_info_t * uinfo)
+{
+/*	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
+	uinfo->count = 1;
+	uinfo->value.integer.min = 0;
+	uinfo->value.integer.max = 65535;*/
+	return 0;
+}
+
+static int snd_sam9407_pcm_vol_get(snd_kcontrol_t * kcontrol,
+			     snd_ctl_elem_value_t * ucontrol)
+{
+/*	snd_sam_pcm_mixer_t *mix = (snd_sam_pcm_mixer_t *)kcontrol->private_value;
+
+	ucontrol->value.integer.value[0] = mix->vol_left;
+	ucontrol->value.integer.value[1] = mix->vol_right;*/
+
+	return 0;
+}
+
+static int snd_sam9407_pcm_vol_put(snd_kcontrol_t * kcontrol,
+			     snd_ctl_elem_value_t * ucontrol)
+{
+/*	sam9407_t *sam = _snd_kcontrol_chip(kcontrol);
+	snd_sam_pcm_mixer_t *mix = (snd_sam_pcm_mixer_t *)kcontrol->private_value;
+
+	u8 ctl1, ctl2, data1, data2;
+	unsigned short val1, val2;
+	int err, change1, change2;
+
+	val1 = ucontrol->value.integer.value[0];
+	val2 = ucontrol->value.integer.value[1];
+
+	change1 = val1 != mix->vol_left;
+	if (change1) {
+		err = snd_sam9407_pcm_ctl_put(sam, chan, ctl1, val1);
+		if (err < 0)
+			change1 = 0;
+	}
+	change2 = val2 != mix->vol_right ;
+	if (change2)
+		err = snd_sam9407_pcm_ctl_put(sam, chan, ctl2, val2);
+		if (err < 0)
+			change2 = 0;
+
+	return (change1 || change2);
+*/
+	return 0;
+}
+
+static snd_kcontrol_new_t snd_sam9407_pcm_vol_control =
+{
+	.iface =	SNDRV_CTL_ELEM_IFACE_MIXER,
+	.name =         "PCM Front Playback Volume",
+	.access =	SNDRV_CTL_ELEM_ACCESS_READWRITE | SNDRV_CTL_ELEM_ACCESS_INACTIVE,
+	.info =		snd_sam9407_pcm_vol_info,
+	.get =		snd_sam9407_pcm_vol_get,
+	.put =		snd_sam9407_pcm_vol_put,
+};
+
+static int snd_sam9407_pcm_auxvol_get(snd_kcontrol_t * kcontrol,
+			        snd_ctl_elem_value_t * ucontrol)
+{
+/*	snd_sam_pcm_mixer_t *mix = (snd_sam_pcm_mixer_t *)kcontrol->private_value;
+
+	ucontrol->value.integer.value[0] = mix->auxvol_left;
+	ucontrol->value.integer.value[1] = mix->auxvol_right;
+*/
+	return 0;
+}
+
+static int snd_sam9407_pcm_auxvol_put(snd_kcontrol_t * kcontrol,
+			        snd_ctl_elem_value_t * ucontrol)
+{
+/*	sam9407_t *sam = _snd_kcontrol_chip(kcontrol);
+	snd_sam_pcm_mixer_t *mix = (snd_sam_pcm_mixer_t *)kcontrol->private_value;
+
+	u8 ctl1, ctl2, data1, data2;
+	unsigned short val1, val2;
+	int err, change1, change2;
+
+	val1 = ucontrol->value.integer.value[0];
+	val2 = ucontrol->value.integer.value[1];
+
+	change1 = val1 != mix->auxvol_left;
+	if (change1) {
+		err = snd_sam9407_pcm_ctl_put(sam, chan, ctl1, val1);
+		if (err < 0)
+			change1 = 0;
+	}
+	change2 = val2 != mix->auxvol_right ;
+	if (change2)
+		err = snd_sam9407_pcm_ctl_put(sam, chan, ctl2, val2);
+		if (err < 0)
+			change2 = 0;
+*/
+	//return (change1 || change2);
+	return 1;
+}
+
+static snd_kcontrol_new_t snd_sam9407_pcm_auxvol_control =
+{
+	.iface =	SNDRV_CTL_ELEM_IFACE_MIXER,
+	.name =         "PCM Rear Playback Volume",
+	.access =	SNDRV_CTL_ELEM_ACCESS_READWRITE | SNDRV_CTL_ELEM_ACCESS_INACTIVE,
+	.info =		snd_sam9407_pcm_vol_info,
+	.get =		snd_sam9407_pcm_auxvol_get,
+	.put =		snd_sam9407_pcm_auxvol_put,
+};
+#if 0
+static void snd_sam9407_notify_pcm_change1(snd_card_t * card, snd_kcontrol_t *kctl, int activate)
+{
+/*	snd_runtime_check(kctl != NULL, return);
+	if (activate)
+		kctl->access &= ~SNDRV_CTL_ELEM_ACCESS_INACTIVE;
+	else
+		kctl->access |= SNDRV_CTL_ELEM_ACCESS_INACTIVE;
+	snd_ctl_notify(card, SNDRV_CTL_EVENT_MASK_VALUE |
+		       SNDRV_CTL_EVENT_MASK_INFO, &kctl->id);*/
+}
+
+static void snd_sam9407_notify_pcm_change(snd_card_t * card, snd_sam_pcm_mixer_t * tmix, int activate)
+{
+/*	snd_sam9407_notify_pcm_change1(card, tmix->ctl_vol, activate);
+	snd_sam9407_notify_pcm_change1(card, tmix->ctl_auxvol, activate);*/
+}
+#endif
+static int snd_sam9407_pcm_mixer_build(sam9407_t *sam, sam9407_voice_t *voice, snd_pcm_substream_t *substream)
+{
+/*	snd_sam_pcm_mixer_t *mix;
+
+	snd_assert(sam != NULL && voice != NULL && substream != NULL, return -EINVAL);
+	mix = &sam->pcm_mixer[substream->number];
+	mix->voice = voice;
+	mix->vol_left = SAM_DEFAULT_PCM_VOL;
+	mix->vol_right = SAM_DEFAULT_PCM_VOL;
+	mix->auxvol_left = SAM_DEFAULT_PCM_AUXVOL;
+	mix->auxvol_right = SAM_DEFAULT_PCM_AUXVOL;
+	snd_sam_notify_pcm_change(sam->card, mix, 1);*/
+	return 0;
+}
+
+static int snd_sam_pcm_mixer_free(sam9407_t *sam, sam9407_voice_t *voice, snd_pcm_substream_t *substream)
+{
+/*	snd_sam_pcm_mixer_t *mix;
+
+	snd_assert(sam != NULL && substream != NULL, return -EINVAL);
+	mix = &sam->pcm_mixer[substream->number];
+	mix->voice = NULL;
+	snd_sam_notify_pcm_change(sam->card, mix, 0);*/
+	return 0;
+}
+
+
+/* ========== */
+
+static int snd_sam9407_pcm(sam9407_t *sam, int device, snd_pcm_t ** rpcm)
+{
+	snd_card_t * card = sam->card;
+	snd_kcontrol_t *kctl;
+	//snd_sam_pcm_mixer_t *pmix;
+
+	snd_pcm_t *pcm;
+	int idx, err;
+
+	/* build pcm mixer controls */
+/*	for (idx = 0; idx < 32; idx++) {
+
+		pmix = &sam->pcm_mixer[idx];
+		pmix->voice = NULL;
+		if ((kctl = pmix->ctl_vol = snd_ctl_new1(&snd_sam9407_pcm_vol_control, sam)) == NULL)
+			return -ENOMEM;
+		kctl->private_value = (long)pmix;
+		kctl->id.index = idx;
+		if ((err = snd_ctl_add(card, kctl)))
+			return err;
+
+		if ((kctl = pmix->ctl_auxvol = snd_ctl_new1(&snd_sam9407_pcm_auxvol_control, sam)) == NULL)
+			return -ENOMEM;
+		kctl->private_value = (long)pmix;
+		kctl->id.index = idx;
+		if ((err = snd_ctl_add(card, kctl)))
+			return err;*/
+#if 0
+		if ((kctl = pmix->ctl_pitch = snd_ctl_new1(&snd_sam9407_pcm_pitch_control, sam)) == NULL)
+			return -ENOMEM;
+		kctl->private_value = (long)pmix;
+		kctl->id.index = idx;
+		if ((err = snd_ctl_add(card, kctl)))
+			return err;
+
+		if ((kctl = pmix->ctl_cutoff = snd_ctl_new1(&snd_sam9407_pcm_cutoff_control, sam)) == NULL)
+			return -ENOMEM;
+		kctl->private_value = (long)pmix;
+		kctl->id.index = idx;
+		if ((err = snd_ctl_add(card, kctl)))
+			return err;
+	}
+#endif
+
+	/* initialize pcm mixer entries */
+/*	for (i = 0; i < SAM_MAX_PCM_CHANNELS; i++) {
+		mix->vol_left = SAM_DEFAULT_PCM_VOL;
+		mix->vol_right = SAM_DEFAULT_PCM_VOL;
+		mix->auxvol_left = SAM_DEFAULT_PCM_AUXVOL;
+		mix->auxvol_right = SAM_DEFAULT_PCM_AUXVOL;
+	}*/
+
+	if (rpcm)
+		*rpcm = NULL;
+	// FIXME: no capture substream yet!!
+	if ((err = snd_pcm_new(sam->card, "SAM9407 PCM", device, SAM_MAX_PCM_CHANNELS, 0, &pcm)) < 0)
+		return err;
+	snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_PLAYBACK, &snd_sam9407_playback_ops);
+	// snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_CAPTURE, &snd_sam9407_capture_ops);
+	pcm->private_data = sam;
+	pcm->info_flags = 0;
+	strcpy(pcm->name, "SAM9407 PCM");
+	sam->pcm = pcm;
+
+	if ((err=snd_pcm_lib_preallocate_pages_for_all(pcm,16*1024, SAM_MAX_BUFFER_SIZE, 0))) {
+		snd_printk("Could not preallocate memory\n");
+		return err;
+	}
+
+	//sam->allocatePCMBuffers(sam, pcm, 64*1024, SAM_MAX_BUFFER_SIZE);
+
+	if (rpcm)
+		*rpcm = pcm;
+	return 0;
+}
+@
+
+
+1.1.1.1
+log
+@Initial import.
+@
+text
+@@

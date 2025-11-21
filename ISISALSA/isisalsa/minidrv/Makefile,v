@@ -1,0 +1,66 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  start:1.1.1.1 vendor:1.1.1;
+locks    ; strict;
+comment  @# @;
+
+
+1.1
+date     2003.07.21.11.56.40;  author pieterpalmers;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2003.07.21.11.56.40;  author pieterpalmers;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@# Comment/uncomment the following line to enable/disable debugging
+#DEBUG = y
+
+# This Makefile has been simplified as much as possible, by putting all
+# generic material, independent of this specific directory, into
+# ../Rules.make. Read that file for details
+
+TOPDIR  := $(shell cd ..; pwd)
+include $(TOPDIR)/Rules.make
+
+ifeq ($(DEBUG),y)
+  DEBFLAGS = -O -g -DSHORT_DEBUG
+else
+  DEBFLAGS = -O2
+endif
+
+CFLAGS += $(DEBFLAGS) -I..
+
+OBJS = short.o
+
+all: $(OBJS)
+
+install:
+	install -d $(INSTALLDIR)
+	install -c short.o $(INSTALLDIR)
+
+clean:
+	rm -f *.o *~ core
+@
+
+
+1.1.1.1
+log
+@Initial import.
+@
+text
+@@

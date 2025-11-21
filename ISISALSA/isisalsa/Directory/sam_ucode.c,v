@@ -1,0 +1,483 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  start:1.1.1.1 vendor:1.1.1;
+locks    ; strict;
+comment  @ * @;
+
+
+1.1
+date     2003.07.21.11.56.36;  author pieterpalmers;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2003.07.21.11.56.36;  author pieterpalmers;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@/*
+ *  Copyright (c) by Uros Bizjak <uros@@kss-loka.si>
+ *
+ *  lowlevel code for SAM9407 chip - microcode hwdep interface
+ *
+ *  BUGS:
+ *    --
+ *
+ *  TODO:
+ *    --
+ *
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ */
+
+#define __NO_VERSION__
+#include <sound/driver.h>
+#include <asm/io.h>
+#include <linux/delay.h>
+#include <linux/wait.h>
+#include <sound/core.h>
+#include <sam9407.h>
+
+#define SAM_UCODE_OFFS		0x200
+
+
+#include "sam_bootcode.h"
+
+static int snd_sam9407_info(sam9407_t * sam, sam9407_info_t *info)
+{
+	// TODO
+	snd_assert(sam != NULL, {snd_printk("sam = NULL !");return -1;});
+	snd_assert(info != NULL, {snd_printk("info = NULL !");return -1;});
+	info->empty = 0;
+	return 0;
+}
+
+static int snd_sam9407_ucode_load(sam9407_t *sam, sam9407_ucode_t *ucode)
+{
+	u8 bytes[7];
+	u8 buffer[6];
+
+	int i=0;
+	unsigned short csum;
+ 	snd_printk(" HWDEP ucode load\n");
+
+	snd_assert(sam != NULL, {snd_printk("sam = NULL !");return -1;});
+	snd_assert(ucode != NULL, {snd_printk("ucode = NULL !");return -1;});
+
+	int err;
+
+	/* Init the host enviroment, i.e. enable the Maestro IDMA port and such */
+	if ((err = sam->init(sam)) < 0) {
+		snd_printk(" sam9407: failed to init host enviroment\n");
+		snd_sam9407_free(sam);
+		return err;
+	}
+
+	/* Disable the SAM interrupts for first operation */
+	if(err=sam->disableInterrupts(sam)) {
+    	snd_printk("sam9407: could not enable interrupt (%d)\n",err);
+	}
+/*	if(err=sam->enableInterrupts(sam)) {
+    	snd_printk("sam9407: could not enable interrupt (%d)\n",err);
+	}*/
+
+/*
+	//ucode->len -= SAM_UCODE_OFFS;SAM_ARRAYSIZE(snd_sam9407_boot_ucode)
+	snd_printk(" bootcode (%d)\n",SAM_ARRAYSIZE(snd_sam9407_boot_ucode));
+	for(i=0;i<SAM_ARRAYSIZE(snd_sam9407_boot_ucode)-8;i+=8) {
+ 	  snd_printk("%04X %04X %04X %04X %04X %04X %04X %04X \n",
+		snd_sam9407_boot_ucode[i],
+		snd_sam9407_boot_ucode[i+1],
+		snd_sam9407_boot_ucode[i+2],
+		snd_sam9407_boot_ucode[i+3],
+		snd_sam9407_boot_ucode[i+4],
+		snd_sam9407_boot_ucode[i+5],
+		snd_sam9407_boot_ucode[i+6],
+		snd_sam9407_boot_ucode[i+7]);
+		schedule();
+
+	}
+
+	snd_printk(" microcode (%d)\n",ucode->len);
+	for(i=0;i<ucode->len-8;i+=8) {
+ 	  snd_printk("%04X %04X %04X %04X %04X %04X %04X %04X \n",
+			ucode->prog[i],
+			ucode->prog[i+1],
+			ucode->prog[i+2],
+			ucode->prog[i+3],
+			ucode->prog[i+4],
+			ucode->prog[i+5],
+			ucode->prog[i+6],
+			ucode->prog[i+7]);
+			schedule();
+	}*/
+
+	if(sam->ucode_loaded) {
+#if 1
+		/* remove module to reload microcode */
+		return -EBUSY;
+#else
+		/* reset loaded microcode - doesn't work on EWS64 */
+		err = snd_sam9407_command(NULL, SAM_CMD_EN_CONTROL,
+					  NULL, 0, NULL, 0, -1);
+		bytes[0] = SAM_DATA_HOT_RES;	/* Hot reset */
+		err = snd_sam9407_command(sam->synth_io_queue, SAM_CMD_HOT_RES,
+					  bytes, 1, NULL, 0, 0x00);
+		if (err < 0) {
+			snd_printd("sam9407: hot reset failed\n");
+			return err;
+		}
+#endif
+	}
+
+	snd_printk(" write boot code \n");
+	/* send boot microcode */
+	sam->writeData16Burst(sam,snd_sam9407_boot_ucode,sizeof(snd_sam9407_boot_ucode)/sizeof(u16));
+
+	//outsw(SAM9407P(sam, DATA16), snd_sam9407_boot_ucode, SAM_ARRAYSIZE(snd_sam9407_boot_ucode));
+
+	/* wait for boot code to start */
+	udelay(10);
+ /*
+2136:	SAM Read  from 	CONTROL	value 80
+2139:	SAM Write to   	CONTROL	value 04
+2142:	SAM Read  from 	CONTROL	value 80
+2145:	SAM Write to   	CONTROL	value 00
+2148:	SAM Read  from 	CONTROL	value 00
+2153:	SAM Read  from 	DATA8	value 00
+2156:	SAM Read  from 	CONTROL	value 00
+2161:	SAM Read  from 	DATA8	value 00
+2164:	SAM Read  from 	CONTROL	value 80
+
+2167:	SAM Write to   	CONTROL	value 05
+2170:	SAM Read  from 	CONTROL	value 80
+2173:	SAM Write to   	CONTROL	value 00
+2176:	SAM Read  from 	CONTROL	value 80
+2179:	SAM Write to   	CONTROL	value 00
+2182:	SAM Read  from 	CONTROL	value 80
+2185:	SAM Write to   	CONTROL	value 00
+2188:	SAM Read  from 	CONTROL	value 80
+*/
+	/* send command sequence to boot microcode */
+	snd_printk("sam9407: 'start ISIS' command\n");
+//	bytes[0] = 0x04;
+//	bytes[1] = 0x00;
+//	err = snd_sam9407_init_command(sam, sam->system_io_queue,
+			//	       bytes, 2, buffer, 2, -1);
+	sam->writeCtrl(sam,0x04);
+	sam->writeCtrl(sam,0x00);
+
+	i=0;
+	while (sam->readCtrl(sam) & (1<<7) && i<1000) {
+	  i++;
+	  udelay(100);
+	}
+
+	if (i>=999) {
+   	   snd_printk("sam9407: timeout\n");
+	}
+	buffer[0]=sam->readData8(sam);
+
+	i=0;
+	while (sam->readCtrl(sam) & (1<<7) && i<1000) {
+	  i++;
+	  udelay(100);
+	}
+	if (i>=999) {
+   	   snd_printk("sam9407: timeout\n");
+	}
+	buffer[1]=sam->readData8(sam);
+
+	udelay(1000);
+	snd_printk("sam9407: returns %02X %02X\n",buffer[0],buffer[1]);
+/*	if (err)
+		goto __error;
+
+	bytes[0] = 0x05;
+	bytes[1] = 0x00;
+	bytes[2] = 0x00;
+	bytes[3] = 0x00;
+	err = snd_sam9407_init_command(sam, sam->system_io_queue,
+				       bytes, 4, buffer, 0, -1);
+	if (err)
+		goto __error;*/
+	sam->writeCtrl(sam,0x05);
+	sam->writeCtrl(sam,0x00);
+	sam->writeCtrl(sam,0x00);
+	sam->writeCtrl(sam,0x00);
+
+udelay(1000);
+
+/*
+2191:	SAM Write to   	CONTROL	value 0B
+2194:	SAM Read  from 	CONTROL	value 80
+2197:	SAM Write to   	CONTROL	value 00
+2200:	SAM Read  from 	CONTROL	value 80
+2203:	SAM Write to   	CONTROL	value 02
+2206:	SAM Read  from 	CONTROL	value 80
+2209:	SAM Write to   	CONTROL	value 00
+2212:	SAM Read  from 	CONTROL	value 80
+2215:	SAM Write to   	CONTROL	value 00
+2218:	SAM Read  from 	CONTROL	value 80
+2221:	SAM Write to   	CONTROL	value 57
+2224:	SAM Read  from 	CONTROL	value 80
+2227:	SAM Write to   	CONTROL	value 6B
+2230:	SAM Read  from 	CONTROL	value 80
+2232:	SAM Read  from 	CONTROL	value 00
+2234:	SAM Read  from 	DATA8	value 10        */
+
+	/* send "transfer microcode" command sequence to boot microcode */
+	bytes[0] = SAM_BOOT_CMD_UCODE_TRANSFER;	/* transfer microcode "command" */
+	bytes[1] = (u8) SAM_UCODE_OFFS;	/* address offset */
+	bytes[2] = (u8) (SAM_UCODE_OFFS >> 8);
+	bytes[3] = 0x00;			/* address page */
+	bytes[4] = 0x00;
+	bytes[5] = (u8) ucode->len;		/* xfer length */
+	bytes[6] = (u8) (ucode->len >> 8);
+	err = snd_sam9407_init_command(sam, NULL, bytes, 7, NULL, 0, -1);
+	if (err)
+		goto __error;
+
+		/* i should get a value */
+	i=0;
+	while (sam->readCtrl(sam) & (1<<7) && i<1000) {
+	  i++;
+	  udelay(100);
+	}
+
+	if (i>=999) {
+   	   snd_printk("sam9407: timeout\n");
+	}
+	buffer[0]=sam->readData8(sam);
+	snd_printk("sam9407: µcode transfer returns %02X\n",buffer[0]);
+
+	/* short delay is needed here */
+	udelay(30);
+
+	/* send microcode */
+	sam->writeData16Burst(sam,ucode->prog, ucode->len);
+
+	//outsw(SAM9407P(sam, DATA16), ucode->prog + SAM_UCODE_OFFS, ucode->len);
+
+	/* send "start microcode" command sequence to boot code */
+	bytes[0] = SAM_BOOT_CMD_UCODE_START;	/* start microcode "command" */
+	bytes[1] = (u8) SAM_UCODE_OFFS;	/* start address offset */
+	bytes[2] = (u8) (SAM_UCODE_OFFS >> 8);
+	err = snd_sam9407_init_command(sam, NULL,
+				       bytes, 3, NULL, 0, -1);
+	udelay(3000);
+		/* i should get a value */
+	if (sam->readCtrl(sam) & (1<<7)) {
+ 		buffer[0]=sam->readData8(sam);
+ 		snd_printk("sam9407: µcode start returns %02X\n",buffer[0]);
+	}
+
+	if(err=sam->enableInterrupts(sam)) {
+    	snd_printk("sam9407: could not enable interrupt (%d)\n",err);
+	}
+	
+	sam->writeCtrl(sam, 0x3f);
+
+	udelay(1000);
+	if (sam->readCtrl(sam) & (1<<7)) {
+ 		buffer[0]=sam->readData8(sam);
+ 		snd_printk("sam9407: switch to UART returns %02X\n",buffer[0]);
+	}
+
+	/*   don't know ctrl 5
+	57631:	SAM Read  from 	CONTROL	value B0
+	57634:	SAM Write to   	CONTROL	value 05
+	57637:	SAM Read  from 	CONTROL	value B0
+	57640:	SAM Write to   	DATA8	value 01
+	*/
+	snd_printk(" doing misterious things\n");
+
+	sam->writeCtrl(sam, 0x05);
+	sam->writeData8(sam, 0x01);
+
+	/* don't know 2C either
+	57645:	SAM Read  from 	CONTROL	value B0
+	57648:	SAM Write to   	CONTROL	value 2C
+	57651:	SAM Read  from 	CONTROL	value B0
+	57654:	SAM Write to   	DATA8	value 00
+
+	*/
+	sam->writeCtrl(sam, 0x2C);
+	sam->writeData8(sam, 0x00);
+
+ __error:
+	if (err < 0) {
+		snd_printk("sam9407: start microcode command failed\n");
+		return err;
+	}
+/*
+	csum = (buffer[1] << 8) | buffer[0];
+	if (csum != ucode->csum) {
+		snd_printk("sam9407: microcode checksum failure\n");
+		return err;
+	}*/
+	
+	snd_printk("sam9407: switch to UART mode\n");
+
+	/* switch to UART mode */
+	err = snd_sam9407_command(sam->midi_io_queue, SAM_CMD_UART_MOD,
+				  NULL, 0, NULL, 0, SAM_ACK_MOD);
+	if (err < 0) {
+		snd_printk("sam9407: can't switch to UART mode\n");
+		return err;
+	}
+
+	/* test board by generating an interrupt */
+	bytes[0] = 0x00;
+	err = snd_sam9407_command(sam->system_io_queue, SAM_CMD_GEN_INT,
+				  bytes, 1, NULL, 0, SAM_ACK_IRQ);
+	if (err < 0) {
+		snd_printk("sam9407: interrupt not detected\n");
+		return err;
+	}
+
+	/* initialize chip */
+	err = snd_sam9407_init(sam);
+	if (err < 0)
+		return err;
+
+	sam->ucode_loaded = 1;
+
+	return 0;
+}
+
+
+static int snd_sam9407_hwdep_open(snd_hwdep_t * hw, struct file *file)
+{
+ 	snd_printk(" HWDEP open\n");
+	snd_assert(hw != NULL, {snd_printk("hw = NULL !");return -1;});
+	snd_assert(file != NULL, {snd_printk("file = NULL !");return -1;});
+	
+	sam9407_t *sam = snd_magic_cast(sam9407_t, hw->private_data, return -ENXIO);
+	snd_assert(sam != NULL, {snd_printk("sam = NULL !");return -1;});
+
+	/* opened in exclusive mode */
+	down(&sam->access_mutex);
+	if (sam->hwdep_used) {
+		up(&sam->access_mutex);
+		return -EAGAIN;
+	}
+	sam->hwdep_used++;
+	up(&sam->access_mutex);
+
+	return 0;
+}
+
+static int snd_sam9407_hwdep_release(snd_hwdep_t * hw, struct file *file)
+{
+ 	snd_printk(" HWDEP release\n");
+	sam9407_t *sam = snd_magic_cast(sam9407_t, hw->private_data, return -ENXIO);
+
+	down(&sam->access_mutex);
+	sam->hwdep_used--;
+	up(&sam->access_mutex);
+
+	return 0;
+}
+
+static int snd_sam9407_hwdep_ioctl(snd_hwdep_t * hw, struct file *file, unsigned int cmd, unsigned long arg)
+{
+ 	snd_printk(" HWDEP ioctl\n");
+	snd_assert(hw != NULL, {snd_printk("hw = NULL !");return -1;});
+	snd_assert(file != NULL, {snd_printk("file = NULL !");return -1;});
+	snd_assert((void *)arg != NULL, {snd_printk("arg = NULL !");return -1;});
+
+	sam9407_t *sam = snd_magic_cast(sam9407_t, hw->private_data, return -ENXIO);
+
+	snd_assert(sam != NULL, {snd_printk("sam = NULL !");return -1;});
+
+	sam9407_info_t info;
+	sam9407_ucode_t *ucode;
+	int res;
+	
+	switch (cmd) {
+	case SNDRV_SAM9407_IOCTL_INFO:
+		if ((res = snd_sam9407_info(sam, &info)) < 0)
+			return res;
+		if (copy_to_user((void *)arg, &info, sizeof(info)))
+			return -EFAULT;
+		return 0;
+	case SNDRV_SAM9407_IOCTL_FW_LOAD:
+#if 0
+		if (!capable(CAP_SYS_ADMIN))
+			return -EPERM;
+#endif
+		ucode = (sam9407_ucode_t *)vmalloc(sizeof(*ucode));
+		if (ucode == NULL)
+			return -ENOMEM;
+		if (copy_from_user(ucode, (void *)arg, sizeof(*ucode))) {
+			vfree(ucode);
+			return -EFAULT;
+		}
+		if ((ucode->len < SAM_UCODE_OFFS) || (ucode->len > SAM_MAX_UCODE_LEN)) {
+			vfree(ucode);
+			return -EINVAL;
+		}
+		
+		snd_assert(sam != NULL, {snd_printk("sam = NULL !");return -1;});
+    	snd_assert(ucode != NULL, {snd_printk("ucode = NULL !");return -1;});
+
+		res = snd_sam9407_ucode_load(sam, ucode);
+		vfree(ucode);
+		return res;
+	}
+	return -ENOTTY;
+}
+
+int snd_sam9407_ucode_hwdep_new(sam9407_t *sam, int device)
+{
+	snd_hwdep_t *hw;
+	int err;
+ 	snd_printk("new HWDEP\n");
+
+	snd_assert(sam != NULL, {snd_printk("sam = NULL !");return -1;});
+	snd_assert(sam->card != NULL, {snd_printk("sam->card = NULL !");return -1;});
+
+	if ((err = snd_hwdep_new(sam->card, "SAM9407", device, &hw)) < 0)
+		return err;
+	strcpy(hw->name, "SAM9407");
+	hw->iface = SNDRV_HWDEP_IFACE_SAM9407;
+	hw->ops.open = snd_sam9407_hwdep_open;
+	hw->ops.release = snd_sam9407_hwdep_release;
+	hw->ops.ioctl = snd_sam9407_hwdep_ioctl;
+	hw->private_data = sam;
+	return 0;
+}
+@
+
+
+1.1.1.1
+log
+@Initial import.
+@
+text
+@@

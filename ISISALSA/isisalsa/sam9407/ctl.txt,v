@@ -1,0 +1,191 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  start:1.1.1.1 vendor:1.1.1;
+locks    ; strict;
+comment  @# @;
+
+
+1.1
+date     2003.07.21.11.56.39;  author pieterpalmers;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2003.07.21.11.56.39;  author pieterpalmers;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@numid=1,iface=CARD,name='Enable Audio IN'
+  ; type=BOOLEAN,access=rw---,values=1
+  : values=on
+numid=4,iface=CARD,name='Enable Chorus'
+  ; type=BOOLEAN,access=rw---,values=1
+  : values=off
+numid=12,iface=CARD,name='Enable EQ-Surr on Audio IN'
+  ; type=BOOLEAN,access=rw---,values=1
+  : values=off
+numid=9,iface=CARD,name='Enable EQ-Surr on MIDI'
+  ; type=BOOLEAN,access=rw---,values=1
+  : values=off
+numid=10,iface=CARD,name='Enable EQ-Surr on PCM'
+  ; type=BOOLEAN,access=rw---,values=1
+  : values=off
+numid=11,iface=CARD,name='Enable EQ-Surr on Synth'
+  ; type=BOOLEAN,access=rw---,values=1
+  : values=off
+numid=13,iface=CARD,name='Enable EQ-Surr on reverb-chorus'
+  ; type=BOOLEAN,access=rw---,values=1
+  : values=off
+numid=2,iface=CARD,name='Enable Echo'
+  ; type=BOOLEAN,access=rw---,values=1
+  : values=off
+numid=3,iface=CARD,name='Enable Reverb'
+  ; type=BOOLEAN,access=rw---,values=1
+  : values=off
+numid=5,iface=CARD,name='Enable Surround'
+  ; type=BOOLEAN,access=rw---,values=1
+  : values=off
+numid=6,iface=CARD,name='Equalizer Type'
+  ; type=ENUMERATED,access=rw---,values=1,items=3
+  ; Item #0 '4ch'
+  ; Item #1 '2ch'
+  ; Item #2 'Off'
+  : values=2
+numid=7,iface=CARD,name='Route PCM to'
+  ; type=ENUMERATED,access=rw---,values=1,items=2
+  ; Item #0 'reverb-chorus'
+  ; Item #1 'aux'
+  : values=0
+numid=42,iface=CARD,name='Route Surround to'
+  ; type=ENUMERATED,access=rw---,values=1,items=2
+  ; Item #0 'main'
+  ; Item #1 'aux'
+  : values=0
+numid=8,iface=CARD,name='Route Synth to'
+  ; type=ENUMERATED,access=rw---,values=1,items=2
+  ; Item #0 'reverb-chorus'
+  ; Item #1 'aux'
+  : values=0
+numid=27,iface=HWDEP,name='Chorus Delay'
+  ; type=INTEGER,access=rw---,values=1,min=0,max=127,step=0
+  : values=0
+numid=30,iface=HWDEP,name='Chorus Depth'
+  ; type=INTEGER,access=rw---,values=1,min=0,max=127,step=0
+  : values=0
+numid=28,iface=HWDEP,name='Chorus Feedback'
+  ; type=INTEGER,access=rw---,values=1,min=0,max=127,step=0
+  : values=0
+numid=26,iface=HWDEP,name='Chorus Level'
+  ; type=INTEGER,access=rw---,values=1,min=0,max=255,step=0
+  : values=127
+numid=25,iface=HWDEP,name='Chorus Program Select'
+  ; type=ENUMERATED,access=rw---,values=1,items=8
+  ; Item #0 'chorus1'
+  ; Item #1 'chorus2'
+  ; Item #2 'chorus3'
+  ; Item #3 'chorus4'
+  ; Item #4 'FM chorus'
+  ; Item #5 'flanger'
+  ; Item #6 'short delay'
+  ; Item #7 'FB delay'
+  : values=2
+numid=29,iface=HWDEP,name='Chorus Rate'
+  ; type=INTEGER,access=rw---,values=1,min=0,max=127,step=0
+  : values=0
+numid=31,iface=HWDEP,name='Equalizer Band 1'
+  ; type=INTEGER,access=rw---,values=2,min=0,max=127,step=0
+  : values=64,64
+numid=35,iface=HWDEP,name='Equalizer Band 1 Freq'
+  ; type=INTEGER,access=rw---,values=1,min=0,max=127,step=0
+  : values=12
+numid=32,iface=HWDEP,name='Equalizer Band 2'
+  ; type=INTEGER,access=rw---,values=2,min=0,max=127,step=0
+  : values=64,64
+numid=36,iface=HWDEP,name='Equalizer Band 2 Freq'
+  ; type=INTEGER,access=rw---,values=1,min=0,max=127,step=0
+  : values=27
+numid=33,iface=HWDEP,name='Equalizer Band 3'
+  ; type=INTEGER,access=rw---,values=2,min=0,max=127,step=0
+  : values=64,64
+numid=37,iface=HWDEP,name='Equalizer Band 3 Freq'
+  ; type=INTEGER,access=rw---,values=1,min=0,max=127,step=0
+  : values=114
+numid=34,iface=HWDEP,name='Equalizer Band 4'
+  ; type=INTEGER,access=rw---,values=2,min=0,max=127,step=0
+  : values=64,64
+numid=38,iface=HWDEP,name='Equalizer Band 4 Freq'
+  ; type=INTEGER,access=rw---,values=1,min=0,max=127,step=0
+  : values=64
+numid=24,iface=HWDEP,name='Reverb Feedback'
+  ; type=INTEGER,access=rw---,values=1,min=0,max=127,step=0
+  : values=0
+numid=22,iface=HWDEP,name='Reverb Level'
+  ; type=INTEGER,access=rw---,values=1,min=0,max=255,step=0
+  : values=127
+numid=21,iface=HWDEP,name='Reverb Program Select'
+  ; type=ENUMERATED,access=rw---,values=1,items=8
+  ; Item #0 'room1'
+  ; Item #1 'room2'
+  ; Item #2 'room3'
+  ; Item #3 'hall1'
+  ; Item #4 'hall2'
+  ; Item #5 'plate'
+  ; Item #6 'delay'
+  ; Item #7 'pan delay'
+  : values=4
+numid=23,iface=HWDEP,name='Reverb Time'
+  ; type=INTEGER,access=rw---,values=1,min=0,max=127,step=0
+  : values=0
+numid=40,iface=HWDEP,name='Surround Delay'
+  ; type=INTEGER,access=rw---,values=1,min=0,max=127,step=0
+  : values=2
+numid=39,iface=HWDEP,name='Surround Level'
+  ; type=INTEGER,access=rw---,values=1,min=0,max=255,step=0
+  : values=0
+numid=41,iface=HWDEP,name='Surround Type'
+  ; type=ENUMERATED,access=rw---,values=1,items=2
+  ; Item #0 'stereo wide'
+  ; Item #1 'simulated stereo'
+  : values=0
+numid=14,iface=PCM,name='Audio IN Chorus Send'
+  ; type=INTEGER,access=rw---,values=1,min=0,max=127,step=0
+  : values=0
+numid=20,iface=PCM,name='Audio IN Echo Feedback'
+  ; type=INTEGER,access=rw---,values=1,min=0,max=127,step=0
+  : values=0
+numid=18,iface=PCM,name='Audio IN Echo Level'
+  ; type=INTEGER,access=rw---,values=1,min=0,max=127,step=0
+  : values=0
+numid=19,iface=PCM,name='Audio IN Echo Time'
+  ; type=INTEGER,access=rw---,values=1,min=0,max=127,step=0
+  : values=0
+numid=17,iface=PCM,name='Audio IN Pan/Send'
+  ; type=INTEGER,access=rw---,values=2,min=0,max=127,step=0
+  : values=127,127
+numid=15,iface=PCM,name='Audio IN Reverb Send'
+  ; type=INTEGER,access=rw---,values=1,min=0,max=127,step=0
+  : values=0
+numid=16,iface=PCM,name='Audio IN Volume'
+  ; type=INTEGER,access=rw---,values=2,min=0,max=255,step=0
+  : values=128,128
+@
+
+
+1.1.1.1
+log
+@Initial import.
+@
+text
+@@

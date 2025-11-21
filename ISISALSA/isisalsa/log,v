@@ -1,0 +1,818 @@
+head	1.4;
+access;
+symbols
+	start:1.1.1.1 vendor:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.4
+date	2003.07.24.12.16.17;	author pieterpalmers;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2003.07.22.22.46.00;	author pieterpalmers;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2003.07.21.16.48.25;	author pieterpalmers;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2003.07.21.11.56.22;	author pieterpalmers;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	2003.07.21.11.56.22;	author pieterpalmers;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.4
+log
+@Update for the PCI64 firmware driver. Almost ready for release.
+Still to be solved: bug in update when accessing SAM1/2 and SAM3/4 simultaneously
+
+Pieter
+
+CVs: ----------------------------------------------------------------------
+@
+text
+@ sam9407_pcm: built on 16:37:37 Jul 23 2003
+ALSA sam_pcm.c:70: TEST (hw_params) voice 0
+ALSA sam_pcm.c:87: allocating 2064 words of SAM memory to id 020, periodsize = 2048
+ALSA sam_mem.c:391: Trying to allocate 2064 words of SAM memory, id= 0020
+ALSA sam_mem.c:408: allocated to slot 7: id= 0020 addr=00010000
+ALSA sam_pcm.c:165: sam9407_pcm: opening channel 0 with parameters 02 D9 72
+ALSA sam_pcm.c:111: TEST (hw_free) voice 0 d28c8498
+ALSA sam_mem.c:421: Freeing SAM memory id= 0020
+ALSA sam_pcm.c:135: TEST (hw_free leave) voice 0
+ sam9407_pcm: built on 16:37:37 Jul 23 2003
+ALSA sam_pcm.c:70: TEST (hw_params) voice 0
+ALSA sam_pcm.c:87: allocating 4112 words of SAM memory to id 020, periodsize = 4096
+ALSA sam_mem.c:391: Trying to allocate 4112 words of SAM memory, id= 0020
+ALSA sam_mem.c:408: allocated to slot 8: id= 0020 addr=00010810
+ALSA sam_pcm.c:165: sam9407_pcm: opening channel 0 with parameters 02 D9 72
+ALSA sam_pcm.c:185: Start TRIGGER
+ALSA sam_pcm.c:198: Stop TRIGGER
+ALSA sam_pcm.c:198: Stop TRIGGER
+ALSA sam_pcm.c:430: Closing voice 0 d28c8498
+ALSA sam_pcm.c:165: sam9407_pcm: opening channel 0 with parameters 02 D9 72
+ALSA sam_pcm.c:185: Start TRIGGER
+ALSA sam_pcm.c:198: Stop TRIGGER
+ALSA sam_pcm.c:111: TEST (hw_free) voice 0 d28c8498
+ALSA sam_pcm.c:165: sam9407_pcm: opening channel 0 with parameters 02 D9 72
+ALSA sam_pcm.c:185: Start TRIGGER
+ALSA sam_pcm.c:430: Closing voice 0 d28c8498
+ALSA sam_mem.c:421: Freeing SAM memory id= 0020
+ALSA sam_pcm.c:135: TEST (hw_free leave) voice 0
+ALSA sam_pcm.c:111: TEST (hw_free) voice 0 d28c8498
+ALSA sam_pcm.c:135: TEST (hw_free leave) voice 0
+ sam9407_pcm: built on 16:37:37 Jul 23 2003
+ALSA sam_pcm.c:70: TEST (hw_params) voice 0
+ALSA sam_pcm.c:87: allocating 2064 words of SAM memory to id 020, periodsize = 2048
+ALSA sam_mem.c:391: Trying to allocate 2064 words of SAM memory, id= 0020
+ALSA sam_mem.c:408: allocated to slot 7: id= 0020 addr=00010000
+ALSA sam_pcm.c:165: sam9407_pcm: opening channel 0 with parameters 02 D9 72
+ALSA sam_pcm.c:111: TEST (hw_free) voice 0 d28c8498
+ALSA sam_mem.c:421: Freeing SAM memory id= 0020
+ALSA sam_pcm.c:135: TEST (hw_free leave) voice 0
+ sam9407_pcm: built on 16:37:37 Jul 23 2003
+ALSA sam_pcm.c:70: TEST (hw_params) voice 0
+ALSA sam_pcm.c:87: allocating 4112 words of SAM memory to id 020, periodsize = 4096
+ALSA sam_mem.c:391: Trying to allocate 4112 words of SAM memory, id= 0020
+ALSA sam_mem.c:408: allocated to slot 8: id= 0020 addr=00010810
+ALSA sam_pcm.c:165: sam9407_pcm: opening channel 0 with parameters 02 D9 72
+ALSA sam_pcm.c:185: Start TRIGGER
+ALSA sam_pcm.c:198: Stop TRIGGER
+ALSA sam_pcm.c:198: Stop TRIGGER
+ALSA sam_pcm.c:430: Closing voice 0 d28c8498
+ALSA sam_pcm.c:165: sam9407_pcm: opening channel 0 with parameters 02 D9 72
+ALSA sam_pcm.c:185: Start TRIGGER
+ALSA sam_pcm.c:198: Stop TRIGGER
+ALSA sam_pcm.c:111: TEST (hw_free) voice 0 d28c8498
+ALSA sam_pcm.c:165: sam9407_pcm: opening channel 0 with parameters 02 D9 72
+ALSA sam_pcm.c:185: Start TRIGGER
+ALSA sam_pcm.c:430: Closing voice 0 d28c8498
+ALSA sam_mem.c:421: Freeing SAM memory id= 0020
+ALSA sam_pcm.c:135: TEST (hw_free leave) voice 0
+ALSA sam_pcm.c:111: TEST (hw_free) voice 0 d28c8498
+ALSA sam_pcm.c:135: TEST (hw_free leave) voice 0
+ALSA sam9407.c:313: sam9407: devfree chip
+ALSA sam9407.c:273: sam9407: free chip
+ALSA sam9407.c:256: sam9407: cleanup shadows
+ isis: loading driver built on 16:37:36 Jul 23 2003
+ALSA isis.c:2639: Entering ISIS create
+PCI: Found IRQ 5 for device 00:0b.0
+ALSA isis.c:2826:  isis: loading SAM driver
+ALSA sam9407.c:27: sam9407: Creating chip
+ALSA sam_pcm.c:926: creating 1/2 controls
+ALSA sam_pcm.c:964: creating 3/4 controls
+ALSA sam_ucode.c:317: new HWDEP
+ALSA sam9407.c:116: sam9407: Creating chip done
+ALSA sam9407.c:148: sam9407: Init chip
+ALSA sam9407.c:189: MMT table:
+ALSA sam9407.c:192: 0x00000, 0x00200000
+ALSA sam9407.c:192: 0x00002, 0x00000000
+ALSA sam9407.c:192: 0x00006, 0x0000681e
+ALSA sam9407.c:192: 0x00002, 0x0000685e
+ALSA sam9407.c:192: 0x00003, 0x00006b19
+ALSA sam9407.c:192: 0x00001, 0x00006cc1
+ALSA sam9407.c:192: 0x00002, 0x00006cc2
+ALSA sam9407.c:192: 0x00001, 0x00010000
+ALSA sam9407.c:192: 0x00002, 0x00200000
+ALSA sam9407.c:192: 0x00002, 0x01000000
+ALSA sam9407.c:192: 0x00082, 0x01800000
+ALSA sam9407.c:192: 0x0ffff, 0x00200000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:192: 0x00000, 0x00000000
+ALSA sam9407.c:195: total entries in mmt: 64
+ALSA sam9407.c:196: mmt address: 6B19
+ALSA sam9407.c:250: sam9407: Init chip done
+ALSA isis.c:2832:  isis: SAM driver loaded
+isis: clocking to 48829
+@
+
+
+1.3
+log
+@Working alpha driver for the PCI46.BIN firmware.
+Everything works but for the capture streams of the ISIS (which also don't work in the windows driver's 'multimedia-mode')
+Synth isn't implemented either.
+
+PCM Devices:
+ playback: 0 = maestro PCM (mixed with SAM 1/2 by firmware)
+           1 = SAM 1/2 output
+           2 = SAM 3/4 output
+ capture:  0 = maestro PCM capture
+
+MIDI input/output should work
+Joystick should work
+@
+text
+@d1 143
+a143 15
+ sam9407_pcm: built on 00:27:39 Jul 23 2003
+ALSA sam_pcm.c:67: TEST (hw_params) voice 1
+ALSA sam_pcm.c:134: sam9407_pcm: opening channel 1 with parameters 02 D9 72
+ALSA sam_pcm.c:154: Start TRIGGER
+ALSA sam_pcm.c:167: Stop TRIGGER
+ALSA sam_pcm.c:167: Stop TRIGGER
+ALSA sam_pcm.c:399: Closing voice 1 c29b90c4
+ALSA sam_pcm.c:134: sam9407_pcm: opening channel 1 with parameters 02 D9 72
+ALSA sam_pcm.c:154: Start TRIGGER
+ sam9407_pcm: built on 00:27:39 Jul 23 2003
+ALSA sam_pcm.c:67: TEST (hw_params) voice 0
+ALSA sam_pcm.c:134: sam9407_pcm: opening channel 0 with parameters 02 D9 72
+ALSA sam_pcm.c:154: Start TRIGGER
+ALSA ../alsa-kernel/core/pcm_lib.c:2157: playback write error (DMA or IRQ trouble?)
+ALSA ../alsa-kernel/core/pcm_lib.c:2157: playback write error (DMA or IRQ trouble?)
+@
+
+
+1.2
+log
+@
+
+working version of alpha driver.
+@
+text
+@d1 15
+a15 336
+
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0x0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0x0
+ALSA sam_pcm.c:448: Updating voice d90c5d7c
+ALSA isis.c:605: write CRTL: 43
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_pcm.c:182: Stop TRIGGER
+ALSA isis.c:605: write CRTL: 41
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_pcm.c:94: TEST (hw_free) voice 0 d90c5d7c
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x10, data = 0xc0
+ALSA sam_pcm.c:510: sam9407: async audio IRQ received, data 0xc0
+ALSA sam_pcm.c:546: sam9407: close interrupt
+ALSA sam_pcm.c:422: Closing voice 0 d90c5d7c
+TEST (hw_free leave) voice 0
+ALSA sam_pcm.c:94: TEST (hw_free) voice 0 d90c5d7c
+TEST (hw_free leave) voice 0
+ALSA sam_pcm.c:321: Freed voice: 0 d90c5d7c
+ALSA sam9407.c:295: sam9407: devfree chip
+ALSA sam9407.c:255: sam9407: free chip
+ALSA sam9407.c:238: sam9407: cleanup shadows
+ isis: loading driver built on 18:08:48 Jul 21 2003
+ALSA isis.c:2637: Entering ISIS create
+PCI: Found IRQ 5 for device 00:0b.0
+ALSA isis.c:2824:  isis: loading SAM driver
+ALSA sam9407.c:27: sam9407: Creating chip
+ALSA sam_ucode.c:317: new HWDEP
+ALSA sam9407.c:107: sam9407: Creating chip done
+ALSA sam9407.c:139: sam9407: Init chip
+ALSA isis.c:605: write CRTL: 03
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x20, data = 0x19
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x20, data = 0x6b
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x20, data = 0x0
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x20, data = 0x0
+ALSA isis.c:605: write CRTL: 02
+ALSA isis.c:634: write DATA8: 19
+ALSA isis.c:634: write DATA8: 6B
+ALSA isis.c:634: write DATA8: 00
+ALSA isis.c:634: write DATA8: 00
+ALSA isis.c:634: write DATA8: C0
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x30, data = 0xac
+ALSA isis.c:605: write CRTL: 01
+ALSA isis.c:634: write DATA8: 19
+ALSA isis.c:634: write DATA8: 6B
+ALSA isis.c:634: write DATA8: 00
+ALSA isis.c:634: write DATA8: 00
+ALSA isis.c:634: write DATA8: C0
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x30, data = 0xac
+ALSA isis.c:605: write CRTL: 02
+ALSA isis.c:634: write DATA8: 1E
+ALSA isis.c:634: write DATA8: 68
+ALSA isis.c:634: write DATA8: 00
+ALSA isis.c:634: write DATA8: 00
+ALSA isis.c:634: write DATA8: 40
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x30, data = 0xac
+ALSA sam_mem.c:473:  statictable: Preallocating MMT PCM entries
+ALSA sam_mem.c:390: Trying to allocate 8208 words of SAM memory, id= 0020
+ALSA isis.c:605: write CRTL: 01
+ALSA isis.c:634: write DATA8: 19
+ALSA isis.c:634: write DATA8: 6B
+ALSA isis.c:634: write DATA8: 00
+ALSA isis.c:634: write DATA8: 00
+ALSA isis.c:634: write DATA8: C0
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x30, data = 0xac
+ALSA sam_mem.c:407: allocated to slot 7: id= 0020 addr=00010000
+ALSA sam_mem.c:390: Trying to allocate 8208 words of SAM memory, id= 0120
+ALSA isis.c:605: write CRTL: 01
+ALSA isis.c:634: write DATA8: 19
+ALSA isis.c:634: write DATA8: 6B
+ALSA isis.c:634: write DATA8: 00
+ALSA isis.c:634: write DATA8: 00
+ALSA isis.c:634: write DATA8: C0
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x30, data = 0xac
+ALSA sam_mem.c:407: allocated to slot 8: id= 0120 addr=00012010
+ALSA sam_mem.c:390: Trying to allocate 8192 words of SAM memory, id= 0820
+ALSA isis.c:605: write CRTL: 01
+ALSA isis.c:634: write DATA8: 19
+ALSA isis.c:634: write DATA8: 6B
+ALSA isis.c:634: write DATA8: 00
+ALSA isis.c:634: write DATA8: 00
+ALSA isis.c:634: write DATA8: C0
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x30, data = 0xac
+ALSA sam_mem.c:407: allocated to slot 9: id= 0820 addr=00014020
+ALSA sam_mem.c:390: Trying to allocate 8192 words of SAM memory, id= 0920
+ALSA isis.c:605: write CRTL: 01
+ALSA isis.c:634: write DATA8: 19
+ALSA isis.c:634: write DATA8: 6B
+ALSA isis.c:634: write DATA8: 00
+ALSA isis.c:634: write DATA8: 00
+ALSA isis.c:634: write DATA8: C0
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x30, data = 0xac
+ALSA sam_mem.c:407: allocated to slot 10: id= 0920 addr=00016020
+ALSA sam_mem.c:390: Trying to allocate 8192 words of SAM memory, id= 0A20
+ALSA isis.c:605: write CRTL: 01
+ALSA isis.c:634: write DATA8: 19
+ALSA isis.c:634: write DATA8: 6B
+ALSA isis.c:634: write DATA8: 00
+ALSA isis.c:634: write DATA8: 00
+ALSA isis.c:634: write DATA8: C0
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x30, data = 0xac
+ALSA sam_mem.c:407: allocated to slot 11: id= 0A20 addr=00018020
+ALSA sam_mem.c:390: Trying to allocate 8192 words of SAM memory, id= 0B20
+ALSA isis.c:605: write CRTL: 01
+ALSA isis.c:634: write DATA8: 19
+ALSA isis.c:634: write DATA8: 6B
+ALSA isis.c:634: write DATA8: 00
+ALSA isis.c:634: write DATA8: 00
+ALSA isis.c:634: write DATA8: C0
+ALSA isis.c:634: write DATA8: 00
+ALSA sam_io.c:147: 	> sam9407: interrupt: stat = 0x30, data = 0xac
+ALSA sam_mem.c:407: allocated to slot 12: id= 0B20 addr=0001A020
+ALSA sam9407.c:232: sam9407: Init chip done
+ALSA isis.c:2830:  isis: SAM driver loaded
+isis: clocking to 48830
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d1 236
+a236 185
+Linux version 2.4.20-LL (root@@pampers) (gcc version 3.2 20020903 (Red Hat Linux 8.0 3.2-7)) #3 Tue Apr 29 14:11:15 CEST 2003
+BIOS-provided physical RAM map:
+ BIOS-e820: 0000000000000000 - 000000000009fc00 (usable)
+ BIOS-e820: 000000000009fc00 - 00000000000a0000 (reserved)
+ BIOS-e820: 00000000000f0000 - 0000000000100000 (reserved)
+ BIOS-e820: 0000000000100000 - 000000001fffc000 (usable)
+ BIOS-e820: 000000001fffc000 - 000000001ffff000 (ACPI data)
+ BIOS-e820: 000000001ffff000 - 0000000020000000 (ACPI NVS)
+ BIOS-e820: 00000000fec00000 - 00000000fec01000 (reserved)
+ BIOS-e820: 00000000fee00000 - 00000000fee01000 (reserved)
+ BIOS-e820: 00000000ffff0000 - 0000000100000000 (reserved)
+0MB HIGHMEM available.
+511MB LOWMEM available.
+On node 0 totalpages: 131068
+zone(0): 4096 pages.
+zone(1): 126972 pages.
+zone(2): 0 pages.
+Kernel command line: ro root=/dev/hda5 rootflags=data=writeback
+Initializing CPU#0
+Detected 1666.767 MHz processor.
+Console: colour VGA+ 80x25
+Calibrating delay loop... 3329.22 BogoMIPS
+Memory: 515308k/524272k available (1454k kernel code, 8576k reserved, 338k data, 288k init, 0k highmem)
+Dentry cache hash table entries: 65536 (order: 7, 524288 bytes)
+Inode cache hash table entries: 32768 (order: 6, 262144 bytes)
+Mount-cache hash table entries: 8192 (order: 4, 65536 bytes)
+Buffer-cache hash table entries: 32768 (order: 5, 131072 bytes)
+Page-cache hash table entries: 131072 (order: 7, 524288 bytes)
+CPU: L1 I Cache: 64K (64 bytes/line), D cache 64K (64 bytes/line)
+CPU: L2 Cache: 256K (64 bytes/line)
+Intel machine check architecture supported.
+Intel machine check reporting enabled on CPU#0.
+CPU:     After generic, caps: 0383fbff c1c3fbff 00000000 00000000
+CPU:             Common caps: 0383fbff c1c3fbff 00000000 00000000
+CPU: AMD Athlon(TM) XP 2000+ stepping 02
+Enabling fast FPU save and restore... done.
+Enabling unmasked SIMD FPU exception support... done.
+Checking 'hlt' instruction... OK.
+POSIX conformance testing by UNIFIX
+mtrr: v1.40 (20010327) Richard Gooch (rgooch@@atnf.csiro.au)
+mtrr: detected mtrr type: Intel
+PCI: PCI BIOS revision 2.10 entry at 0xf1720, last bus=1
+PCI: Using configuration type 1
+PCI: Probing PCI hardware
+PCI: Using IRQ router VIA [1106/3177] at 00:11.0
+isapnp: Scanning for PnP cards...
+isapnp: No Plug & Play device found
+Linux NET4.0 for Linux 2.4
+Based upon Swansea University Computer Society NET3.039
+Initializing RT netlink socket
+apm: BIOS version 1.2 Flags 0x03 (Driver version 1.16)
+Starting kswapd
+VFS: Diskquotas version dquot_6.4.0 initialized
+Journalled Block Device driver loaded
+parport0: PC-style at 0x378 (0x778) [PCSPP,TRISTATE]
+parport0: irq 7 detected
+pty: 2048 Unix98 ptys configured
+Serial driver version 5.05c (2001-07-08) with MANY_PORTS MULTIPORT SHARE_IRQ SERIAL_PCI ISAPNP enabled
+ttyS00 at 0x03f8 (irq = 4) is a 16550A
+Real Time Clock Driver v1.10e
+Uniform Multi-Platform E-IDE driver Revision: 6.31
+ide: Assuming 33MHz system bus speed for PIO modes; override with idebus=xx
+VP_IDE: IDE controller on PCI bus 00 dev 89
+VP_IDE: detected chipset, but driver not compiled in!
+PCI: No IRQ known for interrupt pin A of device 00:11.1. Please try using pci=biosirq.
+VP_IDE: chipset revision 6
+VP_IDE: not 100% native mode: will probe irqs later
+    ide0: BM-DMA at 0xb000-0xb007, BIOS settings: hda:DMA, hdb:DMA
+    ide1: BM-DMA at 0xb008-0xb00f, BIOS settings: hdc:DMA, hdd:DMA
+hda: MAXTOR 6L080J4, ATA DISK drive
+hdb: HL-DT-ST GCE-8481B, ATAPI CD/DVD-ROM drive
+hdc: Maxtor 5T040H4, ATA DISK drive
+hdd: DVD-ROM DDU1621, ATAPI CD/DVD-ROM drive
+ide0 at 0x1f0-0x1f7,0x3f6 on irq 14
+ide1 at 0x170-0x177,0x376 on irq 15
+hda: 156355584 sectors (80054 MB) w/1819KiB Cache, CHS=9732/255/63
+hdc: 80043264 sectors (40982 MB) w/2048KiB Cache, CHS=79408/16/63
+Partition check:
+ hda: hda1 hda2 < hda5 hda6 hda7 > hda3
+ hdc: [PTBL] [4982/255/63] hdc1 hdc2 < hdc5 >
+Floppy drive(s): fd0 is 1.44M
+FDC 0 is a post-1991 82077
+NET4: Frame Diverter 0.46
+RAMDISK driver initialized: 16 RAM disks of 4096K size 1024 blocksize
+md: md driver 0.90.0 MAX_MD_DEVS=256, MD_SB_DISKS=27
+md: Autodetecting RAID arrays.
+md: autorun ...
+md: ... autorun DONE.
+NET4: Linux TCP/IP 1.0 for NET4.0
+IP Protocols: ICMP, UDP, TCP, IGMP
+IP: routing cache hash table of 4096 buckets, 32Kbytes
+TCP: Hash tables configured (established 32768 bind 65536)
+Linux IP multicast router 0.06 plus PIM-SM
+NET4: Unix domain sockets 1.0/SMP for Linux NET4.0.
+EXT3-fs: INFO: recovery required on readonly filesystem.
+EXT3-fs: write access will be enabled during recovery.
+kjournald starting.  Commit interval 5 seconds
+EXT3-fs: recovery complete.
+EXT3-fs: mounted filesystem with writeback data mode.
+VFS: Mounted root (ext3 filesystem) readonly.
+Freeing unused kernel memory: 288k freed
+usb.c: registered new driver usbdevfs
+usb.c: registered new driver hub
+PCI: Found IRQ 3 for device 00:10.3
+PCI: Sharing IRQ 3 with 00:10.0
+PCI: Sharing IRQ 3 with 00:10.1
+PCI: Sharing IRQ 3 with 00:10.2
+hcd.c: ehci-hcd @@ 00:10.3, VIA Technologies, Inc. USB 2.0
+hcd.c: irq 3, pci mem e0827000
+usb.c: new USB bus registered, assigned bus number 1
+ehci-hcd.c: USB 2.0 support enabled, EHCI rev 1. 0
+hub.c: USB hub found
+hub.c: 6 ports detected
+usb-uhci.c: $Revision: 1.275 $ time 10:38:33 May  3 2003
+usb-uhci.c: High bandwidth mode enabled
+PCI: Found IRQ 3 for device 00:10.0
+PCI: Sharing IRQ 3 with 00:10.1
+PCI: Sharing IRQ 3 with 00:10.2
+PCI: Sharing IRQ 3 with 00:10.3
+usb-uhci.c: USB UHCI at I/O 0xd000, IRQ 3
+usb-uhci.c: Detected 2 ports
+usb.c: new USB bus registered, assigned bus number 2
+hub.c: USB hub found
+hub.c: 2 ports detected
+PCI: Found IRQ 3 for device 00:10.1
+PCI: Sharing IRQ 3 with 00:10.0
+PCI: Sharing IRQ 3 with 00:10.2
+PCI: Sharing IRQ 3 with 00:10.3
+usb-uhci.c: USB UHCI at I/O 0xb800, IRQ 3
+usb-uhci.c: Detected 2 ports
+usb.c: new USB bus registered, assigned bus number 3
+hub.c: USB hub found
+hub.c: 2 ports detected
+PCI: Found IRQ 3 for device 00:10.2
+PCI: Sharing IRQ 3 with 00:10.0
+PCI: Sharing IRQ 3 with 00:10.1
+PCI: Sharing IRQ 3 with 00:10.3
+usb-uhci.c: USB UHCI at I/O 0xb400, IRQ 3
+usb-uhci.c: Detected 2 ports
+usb.c: new USB bus registered, assigned bus number 4
+hub.c: USB hub found
+hub.c: 2 ports detected
+usb-uhci.c: v1.275:USB Universal Host Controller Interface driver
+usb.c: registered new driver hiddev
+usb.c: registered new driver hid
+hid-core.c: v1.8.1 Andreas Gal, Vojtech Pavlik <vojtech@@suse.cz>
+hid-core.c: USB HID support drivers
+mice: PS/2 mouse device common for all mice
+hub.c: new USB device 00:10.0-1, assigned address 2
+usb.c: USB device 2 (vend/prod 0x8ec/0x11) is not claimed by any active driver.
+EXT3 FS 2.4-0.9.19, 19 August 2002 on ide0(3,5), internal journal
+Adding Swap: 1036156k swap-space (priority -1)
+kjournald starting.  Commit interval 5 seconds
+EXT3 FS 2.4-0.9.19, 19 August 2002 on ide0(3,3), internal journal
+EXT3-fs: mounted filesystem with ordered data mode.
+blk: queue c0345584, I/O limit 4095Mb (mask 0xffffffff)
+ide0: Speed warnings UDMA 3/4/5 is not functional.
+blk: queue c03458c8, I/O limit 4095Mb (mask 0xffffffff)
+ip_tables: (C) 2000-2002 Netfilter core team
+Broadcom 4401 Ethernet Driver bcm4400 ver. 1.0.1 (08/26/02)
+divert: allocating divert_blk for eth0
+PCI: Found IRQ 10 for device 00:09.0
+PCI: Sharing IRQ 10 with 00:0f.0
+eth0: Broadcom BCM4401 100Base-T found at mem e5800000, IRQ 10, node addr 00e018e55bd0
+bcm4400: eth0 NIC Link is Down
+bcm4400: eth0 NIC Link is Up, 10 Mbps half duplex
+NETDEV WATCHDOG: eth0: transmit timed out
+lp0: using parport0 (polling).
+lp0: console ready
+PCI: Found IRQ 2 for device 00:11.5
+IRQ routing conflict for 00:11.5, have irq 9, want irq 2
+PCI: Setting latency timer of device 00:11.5 to 64
+0: nvidia: loading NVIDIA Linux x86 nvidia.o Kernel Module  1.0-4363  Sat Apr 19 17:46:46 PDT 2003
+Linux agpgart interface v0.99 (c) Jeff Hartmann
+agpgart: Maximum main memory to use for agp memory: 439M
+agpgart: unsupported bridge
+agpgart: no supported devices found.
+0: NVRM: AGPGART: unable to retrieve symbol table
+spurious 8259A interrupt: IRQ7.
+ide-cd: ignoring drive hdb
+hdd: ATAPI 40X DVD-ROM drive, 512kB Cache
+Uniform CD-ROM driver Revision: 3.12
+SCSI subsystem driver Revision: 1.00
+ isis: loading driver built on 13:26:06 Jul 21 2003
+ALSA isis.c:2676: Entering ISIS create
+d238 99
+a336 36
+ALSA isis.c:2278: isis.c: mixer: adding master mute switch
+ALSA isis.c:2286: isis.c: mixer: adding playback control 1/2 Master Switch
+ALSA isis.c:2286: isis.c: mixer: adding playback control 1/2 Master Volume
+ALSA isis.c:2286: isis.c: mixer: adding playback control 3/4 Master Switch
+ALSA isis.c:2286: isis.c: mixer: adding playback control 3/4 Master Volume
+ALSA isis.c:2299: isis.c: mixer: adding monitor control 1/2 Master Switch
+ALSA isis.c:2299: isis.c: mixer: adding monitor control 1/2 Master Volume
+ALSA isis.c:2299: isis.c: mixer: adding monitor control 3/4 Master Switch
+ALSA isis.c:2299: isis.c: mixer: adding monitor control 3/4 Master Volume
+ALSA isis.c:2299: isis.c: mixer: adding monitor control fâàBÎÊâÎ‚âÀÉ„É˚t*É˚rÉ˚t¡Èâ◊Û´f´™Î¬¡Èâ◊Û´f´Î∑¡Èâ◊Û´ÎÆ¡Èâ◊Û´™Î§Ëﬂ/'ﬁÈ$“ˇˇË	0'ﬁÈY“ˇˇËÀ/'ﬁÈë“ˇˇËı/'ﬁÈƒ“ˇˇËÎ/'ﬁÈﬂ“ˇˇË≠/'ﬁÈg”ˇˇË◊/'ﬁÈù”ˇˇ
+ALSA isis.c:2299: <1>Unable to handle kernel paging request at virtual address 3430253d
+ printing eip:
+c0264dfe
+*pde = 00000000
+Oops: 0000
+CPU:    0
+EIP:    0010:[<c0264dfe>]    Tainted: P 
+EFLAGS: 00010297
+eax: 3430253d   ebx: 0000000a   ecx: 3430253d   edx: fffffffe
+esi: d5a63a9e   edi: 00000000   ebp: d5a63a5c   esp: d5a63a24
+ds: 0018   es: 0018   ss: 0018
+Process modprobe (pid: 965, stackpage=d5a63000)
+Stack: 00000012 d5a63a5c c01194c9 00000020 00000400 e08f3d62 d5a63a70 d5a63a97 
+       ffffffff ffffffff d5a63c76 d5a63a78 e1e95d00 da89ec18 d5a63ee4 e08f2045 
+       d5a63a78 000001ff e1e95d27 d5a63c94 d5a63a9c 73697369 203a632e 6578696d 
+Call Trace:    [<c01194c9>] [<e08f3d62>] [<e1e95d00>] [<e08f2045>] [<e1e95d27>]
+  [<e08edb3a>] [<e08efc16>] [<e08efc16>] [<e1e94ed0>] [<e1e95620>] [<e08efdab>]
+  [<e08eff34>] [<e1e93d79>] [<e1e95464>] [<e1e95d00>] [<c015a32e>] [<c015a198>]
+  [<c015a587>] [<e08f8ff0>] [<e08eebc0>] [<e09584fc>] [<e08edb3a>] [<e08f2283>]
+  [<e09584fc>] [<e08f2283>] [<e09421bb>] [<e09584fc>] [<e1e92320>] [<e1e958fc>]
+  [<e1e931d8>] [<e1e97140>] [<e1e94abc>] [<e1e97040>] [<e1e97200>] [<c01f3214>]
+  [<e1e97040>] [<e1e97200>] [<c01f32ae>] [<e1e97200>] [<e1e94cc7>] [<e1e97200>]
+  [<c011a3b0>] [<e1e90060>] [<e1e95fb8>] [<e1e95f70>] [<e1e90060>] [<c010905f>]
+
+Code: 80 38 00 74 07 40 4a 83 fa ff 75 f4 29 c8 83 e7 10 89 c3 75 
+ 
+@
+
+
+1.1.1.1
+log
+@Initial import.
+@
+text
+@@

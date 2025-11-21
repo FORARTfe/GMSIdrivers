@@ -1,0 +1,343 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  start:1.1.1.1 vendor:1.1.1;
+locks    ; strict;
+comment  @ * @;
+
+
+1.1
+date     2003.07.21.11.56.27;  author pieterpalmers;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2003.07.21.11.56.27;  author pieterpalmers;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@/* SAM9407.c
+ * ALSA driver code for SAM9x07 devices
+ *
+ */
+ 
+#include <sound/driver.h>
+#include <linux/delay.h>
+#include <linux/init.h>
+#include <linux/slab.h>
+#include <sound/core.h>
+
+MODULE_AUTHOR("Pieter Palmers");
+MODULE_DESCRIPTION("Dream SAM9407 universial driver");
+//MODULE_CLASSES("{sound}");
+MODULE_LICENSE("GPL");
+//MODULE_DEVICES("{{Dream,SAM9407}}");
+
+#include <sam9407.h>
+
+int snd_sam9407_create(snd_card_t * card, sam9407_t * _sam, sam9407_t ** rsam)
+{
+	int err;
+	sam9407_t *chip;
+	static snd_device_ops_t ops = {
+		.dev_free =	snd_sam9407_dev_free,
+	};
+	snd_printk(" sam9407: Creating chip\n");
+
+	snd_assert(rsam != NULL, return -EINVAL);
+	*rsam = NULL;
+	snd_assert(card != NULL && _sam != NULL, return -EINVAL);
+	chip = snd_magic_kcalloc(sam9407_t, 0, GFP_KERNEL);
+	if (chip == NULL)
+		return -ENOMEM;
+	*chip = *_sam;
+	chip->card = card;
+
+	/* port request is done by the host card
+	if ((chip->res_port = request_region(port, 4, "SAM9407")) == NULL) {
+		snd_sam9407_free(chip);
+		return -EBUSY;
+	}
+	chip->port = port;
+	*/
+	
+	/* IRQ also
+	if (request_irq(irq, snd_sam9407_interrupt, SA_INTERRUPT, "SAM9407", (void *) chip)) {
+		snd_sam9407_free(chip);
+		return -EBUSY;
+	}
+	chip->irq = irq;
+	*/
+
+	init_MUTEX(&chip->access_mutex);
+
+	spin_lock_init(&chip->command_lock);
+	spin_lock_init(&chip->transfer_lock);
+	spin_lock_init(&chip->mmt_lock);
+	spin_lock_init(&chip->voice_lock);
+	rwlock_init(&chip->ctl_rwlock);
+
+	chip->voice_cnt=0;
+
+	/* initialize IO queues */
+	if ((err = snd_sam9407_io_queue_create(chip, &chip->midi_io_queue)) < 0)
+		return err;
+	if ((err = snd_sam9407_io_queue_create(chip, &chip->pcm_io_queue)) < 0)
+		return err;
+	if ((err = snd_sam9407_io_queue_create(chip, &chip->synth_io_queue)) < 0)
+		return err;
+	if ((err = snd_sam9407_io_queue_create(chip, &chip->system_io_queue)) < 0)
+		return err;
+
+	/* set card specific memory setup callback
+	should be done by host card */ 
+	//chip->card_setup = card_setup;
+
+
+/*
+	if ((err = snd_sam9407_init(chip)) < 0) {
+		snd_printk(" sam9407: failed to init chip\n");
+		snd_sam9407_free(chip);
+		return err;
+	}
+*/
+	/* PCM init */
+	/* create new PCM structure */
+	if ((err = snd_sam9407_pcm(chip,1,NULL)) < 0) {
+		return err;
+	}
+
+	/* create proc entry */
+	snd_sam9407_proc_init(chip);
+
+	/* create new hwdep instance */
+	snd_sam9407_ucode_hwdep_new(chip, 0);
+
+	/* register device */
+	if ((err = snd_device_new(card, SNDRV_DEV_LOWLEVEL, chip, &ops)) < 0) {
+		snd_sam9407_free(chip);
+		return err;
+	}
+
+	*rsam = chip;
+	snd_assert(chip != NULL, {snd_printk("chip = NULL !");return -1;});
+
+	snd_printk(" sam9407: Creating chip done\n");
+	return 0;
+
+}
+
+/*
+ * SAM9407 init / done
+ */
+int snd_sam9407_init(sam9407_t * chip)
+{
+	u32 mem_size;
+	u16 mmt_size;
+
+	u32 ctl_addr = 0;
+
+	int slot;
+	int err = 0;
+
+	u32 buf_addr;
+	snd_printk(" sam9407: Init chip\n");
+
+	/* call card specific setup code */
+	if (chip->card_setup)
+		err = chip->card_setup(chip, &mem_size, &mmt_size);
+	if (err < 0)
+		return err;
+
+	/* allocate MM table shadow */
+	if (chip->mmt == NULL)
+		chip->mmt = (sam9407_mmt_entry_t *) kmalloc(mmt_size * sizeof(u16), GFP_KERNEL);
+	if (chip->mmt == NULL)
+		return -ENOMEM;
+
+	/* calculate number of mmt entries */
+	chip->mmt_entries = mmt_size / 3;
+
+	spin_lock(&chip->mmt_lock);
+	err = snd_sam9407_mmt_get_addr(chip, &chip->mmt_addr);
+	if (err < 0)
+		goto __mmt_err;
+
+	/* get mmt table from chip */
+	err =  snd_sam9407_read(chip, (u16 *) chip->mmt,
+				chip->mmt_addr, mmt_size);
+	if (err < 0)
+		goto __mmt_err;
+
+	/* get ctl table address and put correct memory size into MMT */
+	for(slot = 0; slot < chip->mmt_entries; slot++) {
+		if  ((chip->mmt[slot].id & SAM_MMT_ID_MASK) == SAM_MMT_ID_EOM) {
+			chip->mmt[slot].addr[1] = chip->mmt[0].addr[1] = mem_size >> 16;
+			chip->mmt[slot].addr[0] = chip->mmt[0].addr[0] = mem_size;
+			break;
+		} else if ((chip->mmt[slot].id & SAM_MMT_ID_MASK) == SAM_MMT_ID_CTRL_TBL)
+			ctl_addr = (chip->mmt[slot].addr[1] << 16) | chip->mmt[slot].addr[0];
+	}
+
+	err =  snd_sam9407_write(chip, (u16 *) chip->mmt,
+				 chip->mmt_addr, mmt_size);
+
+ __mmt_err:
+	spin_unlock(&chip->mmt_lock);
+	if (err < 0) {
+		snd_printd("sam9407: can't set up MM table\n");
+		return err;
+	}
+
+	if(ctl_addr == 0) {
+		snd_printd("sam9407: can't find CTL table address\n");
+		return -EIO;
+	}
+
+	/* allocate control table shadow */
+	if (chip->ctl_table == NULL)
+		chip->ctl_table = (u16 *) kmalloc(sizeof(u16) * SAM_CTL_TABLE_SIZE, GFP_KERNEL);
+	if (chip->ctl_table == NULL)
+		return -ENOMEM;
+
+	/* get control table from chip */
+	write_lock(&chip->ctl_rwlock);
+	err = snd_sam9407_read(chip, chip->ctl_table,
+			       ctl_addr, SAM_CTL_TABLE_SIZE);
+	write_unlock(&chip->ctl_rwlock);
+
+	if (err < 0) {
+		snd_printd("sam9407: can't set up CTL table\n");
+		return err;
+	}
+
+	/* control initialization */
+	/* create new control structure */
+	if ((err = snd_sam9407_mixer(chip)) < 0) {
+		return err;
+	}
+
+
+	/* TEST CODE */
+/*	spin_lock(&chip->mmt_lock);
+	err = snd_sam9407_mem_alloc(chip, SAM_MMT_ID_PCM_BUF, &buf_addr, 0x3900,
+				    SAM_ALIGN_EVEN, SAM_BOUNDARY_MASK_64K);
+	spin_unlock(&chip->mmt_lock);
+
+	if (err < 0)
+		snd_printk("TEST: ERR %i!!\n", err);
+*/
+	snd_printk(" sam9407: Init chip done\n");
+	return err;
+}
+
+static int snd_sam9407_done(sam9407_t * chip)
+{
+	snd_printk(" sam9407: cleanup shadows\n");
+
+	if (chip->mmt)
+		kfree(chip->mmt);
+	if (chip->ctl_table)
+		kfree(chip->ctl_table);
+
+	return 0;
+}
+
+
+/*
+ *  Create/free the sam9407 instance
+ */
+
+static int snd_sam9407_free(sam9407_t *chip)
+{
+	snd_printk(" sam9407: free chip\n");
+	snd_sam9407_proc_done(chip);
+	snd_sam9407_done(chip);
+
+	/* remove queue structures */
+	if (chip->system_io_queue)
+		kfree(chip->system_io_queue);
+	if (chip->synth_io_queue)
+		kfree(chip->synth_io_queue);
+	if (chip->pcm_io_queue)
+		kfree(chip->pcm_io_queue);
+	if (chip->midi_io_queue)
+		kfree(chip->midi_io_queue);
+/*
+	if (chip->res_port)
+                release_resource(chip->res_port);
+
+        if (chip->irq >= 0)
+                free_irq(chip->irq, (void *) chip);
+*/
+	snd_magic_kfree(chip);
+	return 0;
+}
+
+static int snd_sam9407_io_queue_create(sam9407_t *sam, sam9407_io_queue_t ** rqueue)
+{
+	sam9407_io_queue_t *queue;
+	snd_printk(" sam9407: Creating IO Queue\n");
+
+	queue = snd_kcalloc(sizeof(sam9407_io_queue_t), GFP_KERNEL);
+	if (queue == NULL)
+		return -ENOMEM;
+	queue->sam = sam;
+	spin_lock_init(&queue->lock);
+	*rqueue = queue;
+	return 0;
+}
+
+static int snd_sam9407_dev_free(snd_device_t *device)
+{
+	snd_printk(" sam9407: devfree chip\n");
+	sam9407_t *chip = snd_magic_cast(sam9407_t, device->device_data, return -ENXIO);
+	return snd_sam9407_free(chip);
+}
+
+/*
+ *  Exported symbols
+ */
+
+EXPORT_SYMBOL(snd_sam9407_free);
+EXPORT_SYMBOL(snd_sam9407_dev_free);
+EXPORT_SYMBOL(snd_sam9407_create);
+EXPORT_SYMBOL(snd_sam9407_interrupt);
+EXPORT_SYMBOL(snd_sam9407_command);
+
+
+/*
+ *  INIT part
+ */
+
+static int __init alsa_sam9407_init(void)
+{
+	return 0;
+}
+
+static void __exit alsa_sam9407_exit(void)
+{
+}
+
+module_init(alsa_sam9407_init)
+module_exit(alsa_sam9407_exit)
+@
+
+
+1.1.1.1
+log
+@Initial import.
+@
+text
+@@

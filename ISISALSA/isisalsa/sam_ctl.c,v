@@ -1,0 +1,1040 @@
+head	1.3;
+access;
+symbols
+	start:1.1.1.1 vendor:1.1.1;
+locks; strict;
+comment	@ * @;
+
+
+1.3
+date	2003.07.24.12.16.17;	author pieterpalmers;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2003.07.22.22.46.00;	author pieterpalmers;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2003.07.21.11.56.20;	author pieterpalmers;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	2003.07.21.11.56.20;	author pieterpalmers;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.3
+log
+@Update for the PCI64 firmware driver. Almost ready for release.
+Still to be solved: bug in update when accessing SAM1/2 and SAM3/4 simultaneously
+
+Pieter
+
+CVs: ----------------------------------------------------------------------
+@
+text
+@/*
+ *  Copyright (c) by Uros Bizjak <uros@@kss-loka.si>
+ *  Control and config routines for SAM9407 chip
+ *
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ */
+
+#define __NO_VERSION__
+#include <sound/driver.h>
+#include <asm/io.h>
+#include <sound/core.h>
+#include <sam9407.h>
+
+/* config messages (microcode is reset) */
+#define SAM_REC_CFG	0x09	/* Record configuration */
+#define SAM_AUD_ONOFF	0x6f	/* Audio On/Off */
+#define SAM_ECH_ONOFF	0x68	/* Echo On/Off */
+#define SAM_REV_ONOFF	0x6c	/* Reverb On/Off */
+#define SAM_CHR_ONOFF	0x6d	/* Chorus On/Off */
+#define SAM_EQU_TYPE	0x6b	/* Equalizer type */
+#define SAM_SUR_ONOFF	0x6e	/* Surround On/Off */
+#define SAM_POLY64	0x72	/* Enable 64 voice polyphony */
+#define SAM_WAVE_ASS	0x60	/* PCM output assignment */
+#define SAM_MOD_ASS	0x61	/* Synth audio output assignent */
+
+/* routing messages */
+#define SAM_GM_POST	0x62	/* Surround and equalizer applied on general midi */
+#define SAM_WAVE_POST	0x63	/* Surround and equalizer applied on wave */
+#define SAM_MOD_POST	0x64	/* Surround and equalizer applied on MOD player */
+#define SAM_AUDECH_POST	0x65	/* Surround and equalizer applied on Audio in (+echo) */
+#define SAM_EFF_POST	0x66	/* Surround and equalizer applied on Reverb-chorus */
+
+/* audio in & echo controls */
+#define SAM_AUD_SEL	0x20	/* Audio 1/2 input select */
+#define SAM_AUD_GAINL	0x21	/* Audio Left input gain */
+#define SAM_AUD_GAINR	0x22	/* Audio Right input gain */
+#define SAM_AUDCHR_SEND	0x24	/* Audio Chorus Send */
+#define SAM_AUDREV_SEND	0x27	/* Audio Reverb Send */
+#define SAM_AUDL_VOL	0x34	/* Left Channel Audio in volume */
+#define SAM_AUDR_VOL	0x35	/* Right Channel Audio in volume */
+#define SAM_AUDL_PAN	0x36	/* Left Channel Audio in pan */
+#define SAM_AUDR_PAN	0x37	/* Right Channel Audio in pan */
+#define SAM_ECH_LEV	0x28	/* Echo level applied on audio in */
+#define SAM_ECH_TIM	0x29	/* Echo time applied on audio in */
+#define SAM_ECH_FEED	0x2a	/* Echo feedback applied on audio in */
+
+/* reverb device */
+#define SAM_REV_TYPE	0x69	/* Reverb program select */
+#define SAM_REV_VOL	0x3a	/* Reverb general volume */
+#define SAM_REV_TIME	0x78	/* Reverb time */
+#define SAM_REV_FEED	0x79	/* Reverb feedback */
+
+/* chorus device */
+#define SAM_CHR_TYPE	0x6a	/* Chorus program select */
+#define SAM_CHR_VOL	0x3b	/* Chorus general volume */
+#define SAM_CHR_DEL	0x74	/* Chorus time */
+#define SAM_CHR_FEED	0x75	/* Chorus feedback */
+#define SAM_CHR_RATE	0x76	/* Chorus rate */
+#define SAM_CHR_DEPTH	0x77	/* Chorus depth */
+
+/* equalizer device */
+#define SAM_EQ_LBL	0x10	/* Equalizer low band left */
+#define SAM_EQ_MLBL	0x11	/* Equalizer med low band left */
+#define SAM_EQ_MHBL	0x12	/* Equalizer med high band left */
+#define SAM_EQ_HBL	0x13	/* Equalizer high band left */
+#define SAM_EQ_LBR	0x14	/* Equalizer low band right */
+#define SAM_EQ_MLBR	0x15	/* Equalizer med low band right */
+#define SAM_EQ_MHBR	0x16	/* Equalizer med high band right */ 
+#define SAM_EQ_HBR	0x17	/* Equalizer high band right */
+#define SAM_EQF_LB	0x18	/* Equalizer low band frequency */ 
+#define SAM_EQF_MLB	0x19	/* Equalizer med low band frequency */
+#define SAM_EQF_MHB	0x1a	/* Equalizer med high band frequency */ 
+#define SAM_EQF_HB	0x1b	/* Equalizer high band frequency */
+
+/* surround device */
+#define SAM_SUR_VOL	0x30	/* Surround effect volume */
+#define SAM_SUR_DEL	0x31	/* Surround effect delay */
+#define SAM_SUR_INP	0x32	/* Input mono/stereo select for surround */
+#define SAM_SUR_24	0x33	/* 2 or 4 speakers output select for surround */
+
+/* Wave in device */
+#define SAM_REC_VOL	0x0a	/* WaveIn capture volume */
+
+/* EWS64 */
+#define SAM_NEW_CONFIG	0x67	/* New configuration */
+
+#define SAM_AUD_FC	0x2b	/* filter cutoff frequency applied on audio in */
+#define SAM_AUD_Q	0x2c	/* filter quality applied on audio in */
+#define SAM_AUD_MUTE	0x2d	/* Mute audio in */
+
+/* acknowledges */
+#define SAM_ACK_CTL	0x60
+#define SAM_ACK_CFG	0x00
+
+/* other defines */
+#define CTL_TYPE_CONFIG	0x010000	/* Control resets microcode, update control values */
+#define SAM_TYPE_CONFIG	0x010000	/* Control resets microcode, update control values */
+
+#define CTL_VALUE_CHANGED	0x020000	/* Control value has been changed */
+
+#define CTL_PLAYBACK	0x080000	/* Control is valid during playback */
+#define CTL_MONO_PLAYBACK	0x100000	/* Control is valid during mono playback */
+#define CTL_CAPTURE		0x200000	/* Control is valid during capture */
+
+#define CTL_SWITCH_MASK	0x01
+#define CTL_SLIDER_MASK	0x7f
+#define CTL_VOLUME_MASK	0xff
+#define CTL_UNDEF_MASK	0xff
+
+#define GET_ARRAY_SIZE(x)   (sizeof(x)/sizeof(x[0]))
+
+/* prototypes */
+static int snd_sam9407_ctl_get(sam9407_t * sam, u8 ctl, u8 * data);
+static int snd_sam9407_ctl_put(sam9407_t * sam, u8 ctl, u8 data, unsigned long *ctl_flags);
+
+/* ========= */
+/*
+ * get byte from control table
+ */
+int snd_sam9407_ctl_table_get(sam9407_t * sam, u8 ctl, u8 * data)
+{
+	int idx = ctl >> 1;
+
+	if (idx >= SAM_CTL_TABLE_SIZE)
+		return -EINVAL;
+
+	if (ctl & 0x01)
+		*data = sam->ctl_table[idx] >> 8;
+	else
+		*data = sam->ctl_table[idx];
+	return 0;
+}
+
+static int snd_sam9407_control_info(snd_kcontrol_t * kcontrol,
+				    snd_ctl_elem_info_t * uinfo)
+{
+	int mask = (kcontrol->private_value >> 24) & 0xff;
+
+	uinfo->type = (mask == CTL_SWITCH_MASK) ?
+		SNDRV_CTL_ELEM_TYPE_BOOLEAN : SNDRV_CTL_ELEM_TYPE_INTEGER;
+	uinfo->count = (kcontrol->private_value & 0xff00) ? 2 : 1;
+
+	uinfo->value.integer.min = 0;
+	uinfo->value.integer.max = mask;
+	return 0;
+}
+
+static int snd_sam9407_control_get(snd_kcontrol_t * kcontrol,
+				   snd_ctl_elem_value_t * ucontrol)
+{
+	sam9407_t *sam = _snd_kcontrol_chip(kcontrol);
+	int mask = (kcontrol->private_value >> 24) & 0xff;
+	u8 ctl, data;
+
+	ctl = kcontrol->private_value & 0xff;
+
+	read_lock(&sam->ctl_rwlock);
+	snd_sam9407_ctl_get(sam, ctl, &data);
+	read_unlock(&sam->ctl_rwlock);
+	ucontrol->value.integer.value[0] = data & mask;
+	return 0;
+}
+
+static int snd_sam9407_control_put(snd_kcontrol_t * kcontrol,
+				   snd_ctl_elem_value_t * ucontrol)
+{
+	sam9407_t *sam = _snd_kcontrol_chip(kcontrol);
+	int mask = (kcontrol->private_value >> 24) & 0xff;
+	u8 ctl, data;
+	unsigned int val;
+	int err, change;
+
+	ctl = kcontrol->private_value & 0xff;
+
+	val = ucontrol->value.integer.value[0];
+	if (mask == CTL_SWITCH_MASK)
+		val = val ? 0x7f : val;
+
+	write_lock(&sam->ctl_rwlock);
+	snd_sam9407_ctl_get(sam, ctl, &data);
+	if (mask == CTL_SWITCH_MASK)
+		data = data ? 0x7f : data;
+
+	printk("TESTa: get ctl 0x%x, data = 0x%x\n", ctl, data);
+	change = val != data;
+	if (change) {
+		err = snd_sam9407_ctl_put(sam, ctl, val, &kcontrol->private_value);
+		if (err < 0)
+			change = 0;
+		printk("TESTb: put ctl 0x%x, val = 0x%x\n", ctl, val);
+	} else {
+		printk("TESTc: ctl 0x%x, no change\n", ctl);
+	}
+	write_unlock(&sam->ctl_rwlock);
+	return change;
+}
+
+static int snd_sam9407_dbl_control_get(snd_kcontrol_t * kcontrol,
+				       snd_ctl_elem_value_t * ucontrol)
+{
+	sam9407_t *sam = _snd_kcontrol_chip(kcontrol);
+	int mask = (kcontrol->private_value >> 24) & 0xff;
+	u8 ctl1, ctl2, data1, data2;
+
+	ctl1 = kcontrol->private_value & 0xff;
+	ctl2 = (kcontrol->private_value >> 8) & 0xff;
+
+	read_lock(&sam->ctl_rwlock);
+	snd_sam9407_ctl_get(sam, ctl1, &data1);
+	snd_sam9407_ctl_get(sam, ctl2, &data2);
+	read_unlock(&sam->ctl_rwlock);
+
+	ucontrol->value.integer.value[0] = data1 & mask;
+	ucontrol->value.integer.value[1] = data2 & mask;
+
+	return 0;
+}
+
+static int snd_sam9407_dbl_control_put(snd_kcontrol_t * kcontrol,
+				       snd_ctl_elem_value_t * ucontrol)
+{
+	sam9407_t *sam = _snd_kcontrol_chip(kcontrol);
+	int mask = (kcontrol->private_value >> 24) & 0xff;
+	u8 ctl1, ctl2, data1, data2;
+	unsigned int val1, val2;
+	int err, change1, change2;
+
+	ctl1 = kcontrol->private_value & 0xff;
+	ctl2 = (kcontrol->private_value >> 8) & 0xff;
+
+	val1 = ucontrol->value.integer.value[0];
+	val2 = ucontrol->value.integer.value[1];
+	if (mask == CTL_SWITCH_MASK) {
+		val1 = val1 ? 0x7f : val1;
+		val2 = val2 ? 0x7f : val2;
+	}
+
+	write_lock(&sam->ctl_rwlock);
+	snd_sam9407_ctl_get(sam, ctl1, &data1);
+	snd_sam9407_ctl_get(sam, ctl2, &data2);
+	if (mask == CTL_SWITCH_MASK) {
+		data1 = data1 ? 0x7f : data1;
+		data2 = data2 ? 0x7f : data2;
+	}
+
+	change1 = val1 != data1;
+	if (change1) {
+		err = snd_sam9407_ctl_put(sam, ctl1, val1, &kcontrol->private_value);
+		if (err < 0)
+			change1 = 0;
+	}
+	change2 = val2 != data2 ;
+	if (change2)
+		err = snd_sam9407_ctl_put(sam, ctl2, val2, &kcontrol->private_value);
+		if (err < 0)
+			change2 = 0;
+
+	write_unlock(&sam->ctl_rwlock);
+	return (change1 || change2);
+}
+
+
+static int snd_sam9407_enum_info(snd_kcontrol_t * kcontrol,
+				   snd_ctl_elem_info_t * uinfo)
+{
+	int ctl;
+
+	static char *rec_cfg_texts[] = {
+		"A", "B"
+	};
+
+	static char *route1_texts[] = {
+		"reverb-chorus", "rear"
+	};
+
+	static char *route2_texts[] = {
+		"front", "rear"
+	};
+
+	static char *route3_texts[] = {
+		"front", "equalizer-surround"
+	};
+
+	static char *equal_texts [] = {
+		"4ch", "2ch", "Off"
+	};
+
+	static char *rev_texts[] = {
+		"room1", "room2", "room3", "hall1",
+		"hall2", "plate", "delay", "pan delay"
+	};
+
+	static char *chr_texts[] = {
+		"chorus1", "chorus2", "chorus3", "chorus4",
+		"FM chorus", "flanger", "short delay", "FB delay"
+	};
+
+	static char *sur_texts[] = {
+		"stereo", "mono"
+	};
+
+	char **ptexts;
+
+	ctl = kcontrol->private_value & 0xff;
+
+	uinfo->type = SNDRV_CTL_ELEM_TYPE_ENUMERATED;
+	uinfo->count = 1;
+
+	switch (ctl) {
+	case SAM_REC_CFG:
+		ptexts = rec_cfg_texts;
+		uinfo->value.enumerated.items = GET_ARRAY_SIZE(rec_cfg_texts);
+		break;
+	case SAM_WAVE_ASS:
+	case SAM_MOD_ASS:
+		ptexts = route1_texts;
+		uinfo->value.enumerated.items = GET_ARRAY_SIZE(route1_texts);
+		break;
+	case SAM_REV_TYPE:
+		ptexts = rev_texts;
+		uinfo->value.enumerated.items = GET_ARRAY_SIZE(rev_texts);
+		break;
+	case SAM_CHR_TYPE:
+		ptexts = chr_texts;
+		uinfo->value.enumerated.items = GET_ARRAY_SIZE(chr_texts);
+		break;
+	case SAM_EQU_TYPE:
+		ptexts = equal_texts;
+		uinfo->value.enumerated.items = GET_ARRAY_SIZE(equal_texts);
+		break;
+	case SAM_SUR_INP:
+		ptexts = sur_texts;
+		uinfo->value.enumerated.items = GET_ARRAY_SIZE(sur_texts);
+		break;
+	case SAM_SUR_24:
+		ptexts = route2_texts;
+		uinfo->value.enumerated.items = GET_ARRAY_SIZE(route2_texts);
+		break;
+	case SAM_GM_POST:
+	case SAM_WAVE_POST:
+	case SAM_MOD_POST:
+	case SAM_AUDECH_POST:
+	case SAM_EFF_POST:
+		ptexts = route3_texts;
+		uinfo->value.enumerated.items = GET_ARRAY_SIZE(route3_texts);
+		break;
+	default:		
+		ptexts = NULL;
+		uinfo->value.enumerated.items = 1;
+	}
+
+	if (uinfo->value.enumerated.item > uinfo->value.enumerated.items-1) {
+		uinfo->value.enumerated.item = uinfo->value.enumerated.items-1;
+	}
+	strcpy(uinfo->value.enumerated.name, ptexts[uinfo->value.enumerated.item]);
+	return 0;
+}
+
+static int snd_sam9407_enum_get(snd_kcontrol_t * kcontrol,
+				snd_ctl_elem_value_t * ucontrol)
+{
+	sam9407_t *sam = _snd_kcontrol_chip(kcontrol);
+	int mask = (kcontrol->private_value >> 24) & 0xff;
+	u8 ctl, data;
+
+	ctl = kcontrol->private_value & 0xff;
+
+	read_lock(&sam->ctl_rwlock);
+	snd_sam9407_ctl_get(sam, ctl, &data);
+	read_unlock(&sam->ctl_rwlock);
+	ucontrol->value.enumerated.item[0] = data & mask;
+	return 0;
+}
+
+static int snd_sam9407_enum_put(snd_kcontrol_t * kcontrol,
+				snd_ctl_elem_value_t * ucontrol)
+{
+	sam9407_t *sam = _snd_kcontrol_chip(kcontrol);
+	int mask = (kcontrol->private_value >> 24) & 0xff;
+	u8 ctl, data;
+	unsigned int val;
+	int change;
+	int err;
+
+	ctl = kcontrol->private_value & 0xff;
+
+	val = ucontrol->value.enumerated.item[0];
+	if (mask == CTL_SWITCH_MASK)
+		val = val ? 0x7f : val;
+
+	write_lock(&sam->ctl_rwlock);
+	snd_sam9407_ctl_get(sam, ctl, &data);
+	if (mask == CTL_SWITCH_MASK)
+		data = data ? 0x7f : data;
+
+	change = val != data;
+	if (change) {
+		err = snd_sam9407_ctl_put(sam, ctl, val, &kcontrol->private_value);
+		if (err < 0)
+			change = 0;
+#if 0
+		if ((ctl = SAM_REV_TYPE) || (ctl = SAM_CHR_TYPE)) {
+			/* default settings change with program select */
+			snd_sam9407_update_revchr_settings(sam);
+		}
+#endif
+	}
+	write_unlock(&sam->ctl_rwlock);
+	return change;
+}
+
+/*
+ * SAM9407 control switches
+ */
+
+#define SAM_SW(xiface, xname, xctl) \
+{ .iface = xiface, \
+  .name = xname, \
+  .info = snd_sam9407_control_info, \
+  .get = snd_sam9407_control_get, put: snd_sam9407_control_put, \
+  .private_value = (CTL_SWITCH_MASK << 24) | xctl }
+
+#define SAM_VOL(xiface, xname, xctl, xmask) \
+{ .iface = xiface, \
+  .name = xname, \
+  .info = snd_sam9407_control_info, \
+  .get = snd_sam9407_control_get, put: snd_sam9407_control_put, \
+  .private_value = (xmask << 24) | xctl }
+
+#define SAM_DVOL(xiface, xname, xctl1, xctl2, xmask) \
+{ .iface = xiface, \
+  .name = xname, \
+  .info = snd_sam9407_control_info, \
+  .get = snd_sam9407_dbl_control_get, put: snd_sam9407_dbl_control_put, \
+  .private_value = (xmask << 24) |  (xctl1 << 8) | xctl2 }
+
+#define SAM_ROUTE_SW(xiface, xname, xctl) \
+{ .iface = xiface, \
+  .name = xname, \
+  .info = snd_sam9407_enum_info, \
+  .get = snd_sam9407_enum_get, put: snd_sam9407_enum_put, \
+  .private_value = (CTL_SWITCH_MASK << 24) | xctl}
+
+#define SAM_ENUM(xiface, xname, xctl) \
+{ .iface = xiface, \
+  .name = xname, \
+  .info = snd_sam9407_enum_info, \
+  .get = snd_sam9407_enum_get, put: snd_sam9407_enum_put, \
+  .private_value = (CTL_UNDEF_MASK << 24) | xctl }
+
+
+static snd_kcontrol_new_t snd_sam9407_audio_in_ctl[] = {
+SAM_SW(SNDRV_CTL_ELEM_IFACE_CARD, "Audio IN Switch", SAM_TYPE_CONFIG | SAM_AUD_ONOFF),
+SAM_VOL(SNDRV_CTL_ELEM_IFACE_PCM, "Audio IN Chorus Send", SAM_AUDCHR_SEND, CTL_SLIDER_MASK),
+SAM_VOL(SNDRV_CTL_ELEM_IFACE_PCM, "Audio IN Reverb Send", SAM_AUDREV_SEND, CTL_SLIDER_MASK),
+SAM_DVOL(SNDRV_CTL_ELEM_IFACE_PCM, "Audio IN Pan", SAM_AUDL_PAN, SAM_AUDR_PAN, CTL_SLIDER_MASK)
+};
+
+static snd_kcontrol_new_t snd_sam9407_audio_in_echo_ctl[] = {
+SAM_SW(SNDRV_CTL_ELEM_IFACE_CARD, "Audio IN Echo Switch", SAM_TYPE_CONFIG | SAM_ECH_ONOFF),
+SAM_VOL(SNDRV_CTL_ELEM_IFACE_PCM, "Audio IN Echo Level", SAM_ECH_LEV, CTL_SLIDER_MASK),
+SAM_VOL(SNDRV_CTL_ELEM_IFACE_PCM, "Audio IN Echo Time", SAM_ECH_TIM, CTL_SLIDER_MASK),
+SAM_VOL(SNDRV_CTL_ELEM_IFACE_PCM, "Audio IN Echo Feedback", SAM_ECH_FEED, CTL_SLIDER_MASK)
+};
+
+static snd_kcontrol_new_t snd_sam9407_reverb_ctl[] = {
+SAM_SW(SNDRV_CTL_ELEM_IFACE_CARD, "Reverb Switch", SAM_TYPE_CONFIG | SAM_REV_ONOFF),
+SAM_ENUM(SNDRV_CTL_ELEM_IFACE_HWDEP, "Reverb Program Select", SAM_REV_TYPE),
+SAM_VOL(SNDRV_CTL_ELEM_IFACE_HWDEP, "Reverb Level", SAM_REV_VOL, CTL_VOLUME_MASK),
+SAM_VOL(SNDRV_CTL_ELEM_IFACE_HWDEP, "Reverb Time", SAM_REV_TIME, CTL_SLIDER_MASK),
+SAM_VOL(SNDRV_CTL_ELEM_IFACE_HWDEP, "Reverb Feedback", SAM_REV_FEED, CTL_SLIDER_MASK)
+};
+
+static snd_kcontrol_new_t snd_sam9407_chorus_ctl[] = {
+SAM_SW(SNDRV_CTL_ELEM_IFACE_CARD, "Chorus Switch", SAM_TYPE_CONFIG | SAM_CHR_ONOFF),
+SAM_ENUM(SNDRV_CTL_ELEM_IFACE_HWDEP, "Chorus Program Select", SAM_CHR_TYPE),
+SAM_VOL(SNDRV_CTL_ELEM_IFACE_HWDEP, "Chorus Level", SAM_CHR_VOL, CTL_VOLUME_MASK),
+SAM_VOL(SNDRV_CTL_ELEM_IFACE_HWDEP, "Chorus Delay", SAM_CHR_DEL, CTL_SLIDER_MASK),
+SAM_VOL(SNDRV_CTL_ELEM_IFACE_HWDEP, "Chorus Feedback", SAM_CHR_FEED, CTL_SLIDER_MASK),
+SAM_VOL(SNDRV_CTL_ELEM_IFACE_HWDEP, "Chorus Rate", SAM_CHR_RATE, CTL_SLIDER_MASK),
+SAM_VOL(SNDRV_CTL_ELEM_IFACE_HWDEP, "Chorus Depth", SAM_CHR_DEPTH, CTL_SLIDER_MASK)
+};
+
+static snd_kcontrol_new_t snd_sam9407_surround_ctl[] = {
+SAM_SW(SNDRV_CTL_ELEM_IFACE_CARD, "Surround Switch", SAM_TYPE_CONFIG | SAM_SUR_ONOFF),
+SAM_VOL(SNDRV_CTL_ELEM_IFACE_HWDEP, "Surround Level", SAM_SUR_VOL, CTL_VOLUME_MASK),
+SAM_VOL(SNDRV_CTL_ELEM_IFACE_HWDEP, "Surround Delay", SAM_SUR_DEL, CTL_SLIDER_MASK),
+SAM_ROUTE_SW(SNDRV_CTL_ELEM_IFACE_HWDEP, "Surround Input", SAM_SUR_INP)
+};
+
+static snd_kcontrol_new_t snd_sam9407_equalizer_ctl[] = {
+SAM_ENUM(SNDRV_CTL_ELEM_IFACE_CARD, "Equalizer Type", SAM_TYPE_CONFIG | SAM_EQU_TYPE),
+SAM_DVOL(SNDRV_CTL_ELEM_IFACE_HWDEP, "Equalizer Band 1", SAM_EQ_LBL, SAM_EQ_LBR, CTL_SLIDER_MASK),
+SAM_DVOL(SNDRV_CTL_ELEM_IFACE_HWDEP, "Equalizer Band 2", SAM_EQ_MLBL, SAM_EQ_MLBR, CTL_SLIDER_MASK),
+SAM_DVOL(SNDRV_CTL_ELEM_IFACE_HWDEP, "Equalizer Band 3", SAM_EQ_MHBL, SAM_EQ_MHBR, CTL_SLIDER_MASK),
+SAM_DVOL(SNDRV_CTL_ELEM_IFACE_HWDEP, "Equalizer Band 4", SAM_EQ_HBL, SAM_EQ_HBR, CTL_SLIDER_MASK),
+SAM_VOL(SNDRV_CTL_ELEM_IFACE_HWDEP, "Equalizer Band 1 Freq", SAM_EQF_LB, CTL_SLIDER_MASK),
+SAM_VOL(SNDRV_CTL_ELEM_IFACE_HWDEP, "Equalizer Band 2 Freq", SAM_EQF_MLB, CTL_SLIDER_MASK),
+SAM_VOL(SNDRV_CTL_ELEM_IFACE_HWDEP, "Equalizer Band 3 Freq", SAM_EQF_MHB, CTL_SLIDER_MASK),
+SAM_VOL(SNDRV_CTL_ELEM_IFACE_HWDEP, "Equalizer Band 4 Freq", SAM_EQF_HB, CTL_SLIDER_MASK),
+};
+
+static snd_kcontrol_new_t snd_sam9407_route_ctl[] = {
+SAM_ROUTE_SW(SNDRV_CTL_ELEM_IFACE_CARD, "MIDI Path", SAM_GM_POST),
+SAM_ROUTE_SW(SNDRV_CTL_ELEM_IFACE_CARD, "PCM Front Path", SAM_WAVE_POST),
+SAM_ROUTE_SW(SNDRV_CTL_ELEM_IFACE_CARD, "PCM Rear Path", SAM_TYPE_CONFIG | SAM_WAVE_ASS),
+SAM_ROUTE_SW(SNDRV_CTL_ELEM_IFACE_CARD, "Synth Front Path", SAM_MOD_POST),
+SAM_ROUTE_SW(SNDRV_CTL_ELEM_IFACE_CARD, "Synth Rear Path", SAM_TYPE_CONFIG | SAM_MOD_ASS),
+SAM_ROUTE_SW(SNDRV_CTL_ELEM_IFACE_CARD, "Audio IN Path", SAM_AUDECH_POST),
+SAM_ROUTE_SW(SNDRV_CTL_ELEM_IFACE_CARD, "Reverb-Chorus Path", SAM_EFF_POST),
+SAM_ROUTE_SW(SNDRV_CTL_ELEM_IFACE_CARD, "Surround Path", SAM_SUR_24),
+SAM_ENUM(SNDRV_CTL_ELEM_IFACE_CARD, "Capture Select", SAM_TYPE_CONFIG | SAM_REC_CFG),
+};
+
+static snd_kcontrol_new_t snd_sam9407_mixer_ctl[] = {
+SAM_VOL(SNDRV_CTL_ELEM_IFACE_MIXER, "Line Playback Switch", SAM_AUD_MUTE, CTL_SWITCH_MASK),
+SAM_DVOL(SNDRV_CTL_ELEM_IFACE_MIXER, "Line Playback Volume", SAM_AUDL_VOL, SAM_AUDR_VOL, CTL_VOLUME_MASK),
+SAM_VOL(SNDRV_CTL_ELEM_IFACE_MIXER, "Capture Volume", SAM_REC_VOL, CTL_VOLUME_MASK)
+};
+
+/* ========= */
+
+/*
+ * resume controls after config command
+ * (config commands reset sam9407 microcode)
+ * -> ctl_table_rwlock should be writelocked
+ */
+static void snd_sam9407_resume_controls(sam9407_t * sam)
+{
+	snd_card_t *card = sam->card;
+	struct list_head *list;
+	snd_kcontrol_t *kctl;
+
+	u8 ctl, val;
+
+	list_for_each(list, &card->controls) {
+		kctl = snd_kcontrol(list);
+		if ((kctl->private_value & CTL_VALUE_CHANGED)) {
+			ctl = kctl->private_value & 0xff;
+			snd_sam9407_ctl_get(sam, ctl, &val);
+			snd_sam9407_ctl_put(sam, ctl, val, &kctl->private_value);
+		}
+	}
+}
+
+/*
+ * get ctl value from control table
+ * -> ctl_table_rwlock should be readlocked
+ */
+static int snd_sam9407_ctl_get(sam9407_t * sam, u8 ctl, u8 * data)
+{
+	int idx = ctl >> 1;
+
+	if (idx >= SAM_CTL_TABLE_SIZE)
+		return -EINVAL;
+
+	if (ctl & 0x01)
+		*data = sam->ctl_table[idx] >> 8;
+	else
+		*data = sam->ctl_table[idx];
+	return 0;
+}
+
+/*
+ *  send control data to SAM9407
+ *  and update control table
+ * -> ctl_table_rwlock should be writelocked
+ */
+static int snd_sam9407_ctl_put(sam9407_t * sam, u8 ctl, u8 data,
+			 unsigned long* ctl_flags)
+{
+	int idx, err;
+
+	unsigned long flags;
+
+	int nelem;
+
+	idx = ctl >> 1;
+
+	if (idx >= SAM_CTL_TABLE_SIZE)
+		return -EINVAL;
+
+	if (*ctl_flags & SAM_TYPE_CONFIG) {
+		snd_kcontrol_t *kctl;
+
+		/* paranoia: if voices are opened, don't reset microcode */
+		spin_lock_irqsave(&sam->voice_lock, flags);
+		if (sam->voice_cnt) {
+			spin_unlock_irqrestore(&sam->voice_lock, flags);
+			return -EBUSY;
+		}
+		spin_unlock_irqrestore(&sam->voice_lock, flags);
+
+		/* Config command */  
+		err = snd_sam9407_command(sam, sam->system_io_queue, ctl,
+				      &data, 1, NULL, 0, SAM_ACK_CFG);
+		if (err < 0) {
+			snd_printd("sam9407: change config failed, ctl = 0x%x\n", ctl);
+			return -EIO;
+		}
+		/* switch to UART mode */
+		err = snd_sam9407_command(sam, sam->midi_io_queue, SAM_CMD_UART_MOD,
+				      NULL, 0, NULL, 0, SAM_ACK_MOD);
+		if (err < 0) {
+			snd_printd("sam9407: can't switch to UART mode\n");
+			return -EIO;
+		}
+
+		/* resume controls after config microcode reset */
+		snd_sam9407_resume_controls(sam);
+
+		/* update access flags */
+		switch (ctl) {
+/*		case SAM_AUD_ONOFF:
+			kctl = &sam->audio_in_ctl;
+			nelem = GET_ARRAY_SIZE(snd_sam9407_audio_in_ctl);
+			break;
+		case SAM_ECH_ONOFF:
+			kctl = &sam->audio_in_echo_ctl;
+			nelem = GET_ARRAY_SIZE(snd_sam9407_audio_in_echo_ctl);
+			break;
+		case SAM_REV_ONOFF:
+			kctl = &sam->reverb_ctl;
+			nelem = GET_ARRAY_SIZE(snd_sam9407_reverb_ctl);
+			break;
+		case SAM_CHR_ONOFF:
+			kctl = &sam->chorus_ctl;
+			nelem = GET_ARRAY_SIZE(snd_sam9407_chorus_ctl);
+			break;
+		case SAM_SUR_ONOFF:
+			kctl = &sam->surround_ctl;
+			nelem = GET_ARRAY_SIZE(snd_sam9407_surround_ctl);
+			break;
+		case SAM_EQU_TYPE:
+			kctl = &sam->equalizer_ctl;
+			nelem = GET_ARRAY_SIZE(snd_sam9407_equalizer_ctl);
+			break;*/
+		default:
+			kctl = NULL;
+			nelem = 0;
+		}
+
+		for (idx = 1; idx < nelem; idx++) {
+			if (data) {
+//				kctl[idx].access &= ~SNDRV_CTL_ELEM_ACCESS_INACTIVE;
+			} else {
+//				kctl[idx].access |= SNDRV_CTL_ELEM_ACCESS_INACTIVE;
+			}
+
+			snd_ctl_notify(sam->card, SNDRV_CTL_EVENT_MASK_VALUE, &kctl[idx].id);
+		}
+	} else {
+		/* send control message, Readback Table change notifications should be disabled! */
+		err = snd_sam9407_command(sam, NULL, ctl,
+				      &data, 1, NULL, 0, -1);
+		*ctl_flags |= CTL_VALUE_CHANGED;
+	}
+
+	/* update data table word */
+	if (ctl & 0x01) {
+		sam->ctl_table[idx] &= 0x00ff;
+		sam->ctl_table[idx] |= data << 8;
+	} else {
+		sam->ctl_table[idx] &= 0xff00;
+		sam->ctl_table[idx] |= data;
+	}
+
+	return 0;
+}
+
+/* ========= */
+
+void snd_sam9407_disable_config_ctl(sam9407_t *sam)
+{
+	struct list_head *p;
+	snd_kcontrol_t *kctl;	
+
+	list_for_each(p, &sam->config_list) {
+		kctl = snd_kcontrol(p);
+		//kctl->access |= SNDRV_CTL_ELEM_ACCESS_INACTIVE;
+		snd_ctl_notify(sam->card, SNDRV_CTL_EVENT_MASK_VALUE, &kctl->id);
+	}
+}
+
+int snd_sam9407_enable_config_ctl(sam9407_t *sam)
+{
+	struct list_head *p;
+	snd_kcontrol_t *kctl;
+
+	list_for_each(p, &sam->config_list) {
+		kctl = snd_kcontrol(p);
+	//	kctl->access &= ~SNDRV_CTL_ELEM_ACCESS_INACTIVE;
+		snd_ctl_notify(sam->card, SNDRV_CTL_EVENT_MASK_VALUE, &kctl->id);
+	}
+}
+
+/* ========= */
+
+static int snd_sam9407_mixer_create_elements(sam9407_t *sam,
+				     snd_kcontrol_t *kctl,
+				     snd_kcontrol_new_t *kctl_new,
+				     int nelem)
+{
+#if 0
+	snd_card_t *card;
+	int idx;
+	u8 data;
+	int err;
+
+	snd_assert(sam != NULL, return -EINVAL);
+	card = sam->card;
+
+	/* get power-up state of sam9407 control */
+	read_lock(&sam->ctl_rwlock);
+	snd_sam9407_ctl_get(sam, kctl_new[0].private_value & 0xff, &data);
+	read_unlock(&sam->ctl_rwlock);
+
+	kctl = kmalloc(sizeof(snd_kcontrol_t *) * nelem, GFP_KERNEL);
+	if (kctl == NULL) {
+		snd_printk("sam9407: out of memory\n");
+		return -ENOMEM;
+	}
+
+	/* add ON/OFF switch control */
+	if ((err = snd_ctl_add(card, kctl[0] = snd_ctl_new1(&kctl_new[0], sam))) < 0)
+		return err;
+
+	/* add config control to list of config controls */
+	if (kctl_new[0].private_value & SAM_TYPE_CONFIG)
+		list_add_tail(sam->config_ctl, &kctl[0]);
+
+	/* add subelements */
+	for (idx = 1; idx < nelem; idx++) {
+		&kctl_new[idx]->access = SNDRV_CTL_ELEM_ACCESS_READWRITE;
+		if (data == 0)
+			&kctl_new[idx]->access |= SNDRV_CTL_ELEM_ACCESS_INACTIVE;
+
+		if ((err = snd_ctl_add(card, kctl[idx] = snd_ctl_new1(&kctl_new[idx], sam))) < 0)
+			return err;
+	}
+#endif
+	return 0;
+}
+
+static int snd_sam9407_mixer_create_elements1(sam9407_t *sam,
+				      snd_kcontrol_t *kctl,
+				      snd_kcontrol_new_t *kctl_new,
+				      int nelem)
+{
+	
+#if 0
+	snd_card_t *card;
+	int idx;
+	int err;
+
+	snd_assert(sam != NULL, return -EINVAL);
+	card = sam->card;
+
+	kctl = kmalloc(sizeof(snd_kcontrol_t *) * nelem, GFP_KERNEL);
+	if (kctl == NULL) {
+		snd_printk("sam9407: out of memory\n");
+		return -ENOMEM;
+	}
+
+	/* add elements */
+	for (idx = 0; idx < nelem; idx++) {
+		if ((err = snd_ctl_add(card, kctl[idx] = snd_ctl_new1(&kctl_new[idx], sam))) < 0)
+			return err;
+		/* add config control to list of config controls */
+		if (kctl_new[0].private_value & SAM_TYPE_CONFIG)
+			list_add_tail(sam->config_ctl, &kctl[idx]);
+	}
+#endif
+	return 0;
+}
+
+
+/* FIXME: USE THIS! */
+
+void snd_sam9407_mixer_free(sam9407_t *sam)
+{
+#if 0
+	struct list_head *p;
+
+	if (sam->equalizer_ctl)
+		kfree (sam->equalizer_ctl);
+	if (sam->surround_ctl)
+		kfree (sam->surround_ctl);
+	if (sam->chorus_ctl)
+		kfree (sam->chorus_ctl);
+	if (sam->reverb_ctl)
+		kfree (sam->reverb_ctl);
+	if (sam->audio_in_echo_ctl)
+		kfree (sam->audio_in_echo_ctl);
+	if (sam->audio_in_ctl)
+		kfree (sam->audio_in_ctl);
+
+	/* remove list of config controls */
+	list_for_each(p, sam->config_list) {
+		list_del(p);
+	}
+#endif
+}
+
+int snd_sam9407_mixer(sam9407_t *sam)
+{
+	snd_card_t *card;
+	int nelem;
+
+	int idx, err;
+
+	snd_assert(sam != NULL, return -EINVAL);
+	card = sam->card;
+
+	strcpy(card->mixername, "ISIS Mixer");
+
+	/* list of config controls */
+	INIT_LIST_HEAD(&sam->config_list);
+#if 0
+	/* build audio IN control */
+	nelem = GET_ARRAY_SIZE(snd_sam9407_audio_in_ctl);
+	err = snd_sam9407_mixer_create_elements(sam, &sam->audio_in_ctl,
+					snd_sam9407_audio_in_ctl, nelem);
+	if (err < 0)
+		return err;
+
+	/* build audio IN echo control */
+	nelem = GET_ARRAY_SIZE(snd_sam9407_audio_in_echo_ctl);
+	err = snd_sam9407_mixer_create_elements(sam, &sam->audio_in_echo_ctl,
+					snd_sam9407_audio_in_echo_ctl, nelem);
+	if (err < 0)
+		return err;
+
+	/* build reverb control */
+	nelem = GET_ARRAY_SIZE(snd_sam9407_reverb_ctl);
+	err = snd_sam9407_mixer_create_elements(sam, &sam->reverb_ctl,
+					snd_sam9407_reverb_ctl, nelem);
+	if (err < 0)
+		return err;
+
+	/* build chorus control */
+	nelem = GET_ARRAY_SIZE(snd_sam9407_chorus_ctl);
+	err = snd_sam9407_mixer_create_elements(sam, &sam->chorus_ctl,
+					snd_sam9407_chorus_ctl, nelem);
+	if (err < 0)
+		return err;
+
+	/* build surround control */
+	nelem = GET_ARRAY_SIZE(snd_sam9407_surround_ctl);
+	err = snd_sam9407_mixer_create_elements(sam, &sam->surround_ctl,
+					snd_sam9407_surround_ctl, nelem);
+	if (err < 0)
+		return err;
+
+	/* build equalizer control */
+	nelem = GET_ARRAY_SIZE(snd_sam9407_equalizer_ctl);
+	err = snd_sam9407_mixer_create_elements(sam, &sam->equalizer_ctl,
+					snd_sam9407_equalizer_ctl, nelem);
+	if (err < 0)
+		return err;
+
+	/* build route controls */
+	nelem = GET_ARRAY_SIZE(snd_sam9407_route_ctl);
+	err = snd_sam9407_mixer_create_elements1(sam, snd_sam9407_route_ctl, nelem);
+	if (err < 0)
+		return err;
+
+	/* build mixer controls */
+	nelem = GET_ARRAY_SIZE(snd_sam9407_mixer_ctl);
+	err = snd_sam9407_mixer_create_elements1(sam, snd_sam9407_mixer_ctl, nelem);
+	if (err < 0)
+		return err;
+#endif
+	return 0;
+}
+@
+
+
+1.2
+log
+@Working alpha driver for the PCI46.BIN firmware.
+Everything works but for the capture streams of the ISIS (which also don't work in the windows driver's 'multimedia-mode')
+Synth isn't implemented either.
+
+PCM Devices:
+ playback: 0 = maestro PCM (mixed with SAM 1/2 by firmware)
+           1 = SAM 1/2 output
+           2 = SAM 3/4 output
+ capture:  0 = maestro PCM capture
+
+MIDI input/output should work
+Joystick should work
+@
+text
+@d828 1
+a828 1
+	strcpy(card->mixername, "SAM mixer");
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d123 1
+a123 1
+#define ARRAY_SIZE(x)   (sizeof(x)/sizeof(x[0]))
+d325 1
+a325 1
+		uinfo->value.enumerated.items = ARRAY_SIZE(rec_cfg_texts);
+d330 1
+a330 1
+		uinfo->value.enumerated.items = ARRAY_SIZE(route1_texts);
+d334 1
+a334 1
+		uinfo->value.enumerated.items = ARRAY_SIZE(rev_texts);
+d338 1
+a338 1
+		uinfo->value.enumerated.items = ARRAY_SIZE(chr_texts);
+d342 1
+a342 1
+		uinfo->value.enumerated.items = ARRAY_SIZE(equal_texts);
+d346 1
+a346 1
+		uinfo->value.enumerated.items = ARRAY_SIZE(sur_texts);
+d350 1
+a350 1
+		uinfo->value.enumerated.items = ARRAY_SIZE(route2_texts);
+d358 1
+a358 1
+		uinfo->value.enumerated.items = ARRAY_SIZE(route3_texts);
+d629 1
+a629 1
+			nelem = ARRAY_SIZE(snd_sam9407_audio_in_ctl);
+d633 1
+a633 1
+			nelem = ARRAY_SIZE(snd_sam9407_audio_in_echo_ctl);
+d637 1
+a637 1
+			nelem = ARRAY_SIZE(snd_sam9407_reverb_ctl);
+d641 1
+a641 1
+			nelem = ARRAY_SIZE(snd_sam9407_chorus_ctl);
+d645 1
+a645 1
+			nelem = ARRAY_SIZE(snd_sam9407_surround_ctl);
+d649 1
+a649 1
+			nelem = ARRAY_SIZE(snd_sam9407_equalizer_ctl);
+d834 1
+a834 1
+	nelem = ARRAY_SIZE(snd_sam9407_audio_in_ctl);
+d841 1
+a841 1
+	nelem = ARRAY_SIZE(snd_sam9407_audio_in_echo_ctl);
+d848 1
+a848 1
+	nelem = ARRAY_SIZE(snd_sam9407_reverb_ctl);
+d855 1
+a855 1
+	nelem = ARRAY_SIZE(snd_sam9407_chorus_ctl);
+d862 1
+a862 1
+	nelem = ARRAY_SIZE(snd_sam9407_surround_ctl);
+d869 1
+a869 1
+	nelem = ARRAY_SIZE(snd_sam9407_equalizer_ctl);
+d876 1
+a876 1
+	nelem = ARRAY_SIZE(snd_sam9407_route_ctl);
+d882 1
+a882 1
+	nelem = ARRAY_SIZE(snd_sam9407_mixer_ctl);
+@
+
+
+1.1.1.1
+log
+@Initial import.
+@
+text
+@@

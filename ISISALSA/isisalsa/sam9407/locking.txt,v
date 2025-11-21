@@ -1,0 +1,95 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  start:1.1.1.1 vendor:1.1.1;
+locks    ; strict;
+comment  @# @;
+
+
+1.1
+date     2003.07.21.11.56.40;  author pieterpalmers;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2003.07.21.11.56.40;  author pieterpalmers;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@There are many locks in sam9407 driver:
+
+-- queue locks:
+
+  Driver is designed to use four independent queues. The purpose of these
+queues is to wait for command acknowledges or status data, returned thru
+interrupt dispatch.
+  When queue is non-NULL (this means that command is expecting some data to
+be returned thru interrupt), queue is spin_locked in queue->lock and status
+bits are set in status field. We wait for ACK interrupt and then eventually
+for interrupts which carry return message. Status bits are set to reflect
+what we expect to be returned after command is sent.
+  When queue is busy, we spin-wait for queue on queue->lock to be released.
+Queue lock is released when all data is received (or command data receive
+timeout happens). Status bits are set in interrupt handler, and communication
+with wait loop is handled thru atomic bitops.
+  When queue is NULL, no interrupts are expected on command and no queue
+locking is performed. This way, on NULL queue commands can be sent with
+disabled interrupts.
+
+-- command lock:
+  
+  Commands on locked and non-locked queues are serialized by sam->command_lock
+spinlock. This spinlock should disable interrupts, because we can send command
+from async (audio, MIDI receive) interrupt handler. Otherwise, sending command
+bytes to hardware is synchronized by busy-waiting on RF hardware status bit.
+
+  We do not need to lock HW status reads, as they are atomic to us. All returned
+data is delivered by interrupt. Returned data is processed by interrupt handler
+and dispatched to (already locked) queues. Synchronous data returned on unlocked
+queue indicates error condition.
+
+-- memory transfer lock:
+
+  Memory transfers are serialized by hardware transfer lock. Before transfer,
+we should acquire internal hardware lock (indicated thru ACK/NAK on WRT_MEM
+and RD_MEM commands)
+
+-- MMT (memory management table) lock:
+
+  Serializes access to MMT updating. MMT is shadowed in memory and it is
+locked in sam->mmt_lock spinlock. This lock protects MMT table and mmt address
+fields. It is exclusive locked, because MMT is usually read-modified-wrote on
+MMT entry alloc/free. Memory management routines should not be called with
+disabled interrupts, because they expect ACK/NAK to be returned, so MMT lock
+should not block interrupts.
+
+-- CTL (control table shadow) lock:
+
+  Serializer access to control table shadow. As this table is mostly read,
+lock is realized as rw_lock spinlock. It allows concurent readers, but only
+one writer at a time. In hope that control element operators are not called
+from interrupts, this spinlock is not interrupt blocking.
+
+-- open lock
+
+  Serializes access to voice allocation. IRQ blocking, because voice can be
+acquired/released from interrupt context.@
+
+
+1.1.1.1
+log
+@Initial import.
+@
+text
+@@
