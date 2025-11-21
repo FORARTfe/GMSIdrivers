@@ -1311,67 +1311,67 @@ static int maestro_probe(struct pci_dev *pdev, const struct pci_device_id *id)
     maestro_chip_init(chip);
 
     /* create PCM and AC97 */
-    {
-        struct snd_pcm *pcm;
-        err = snd_pcm_new(card, "Maestro PCM", 0, 1, 1, &pcm);
-        if (err)
-            goto err_card;
-        chip->pcm = pcm;
-        pcm->private_data = chip;
-        pcm->info_flags = 0;
-        strcpy(pcm->name, "Guillemot Maxi Studio ISIS");
 
-        snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_PLAYBACK, &maestro_pcm_playback_ops);
-        snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_CAPTURE, &maestro_pcm_capture_ops);
+	struct snd_pcm *pcm;
+	err = snd_pcm_new(card, "Maestro PCM", 0, 1, 1, &pcm);
+	if (err)
+		goto err_card;
+	chip->pcm = pcm;
+	pcm->private_data = chip;
+	pcm->info_flags = 0;
+	strcpy(pcm->name, "Guillemot Maxi Studio ISIS");
 
-        /* AC'97 Inizialization */
-        err = maestro_ac97_attach(chip);
-        if (err < 0) {
-            dev_err(&pdev->dev, "maestro: AC97 attach failed (%d)\n", err);
-            goto err_card;
-        }
+	snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_PLAYBACK, &maestro_pcm_playback_ops);
+	snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_CAPTURE, &maestro_pcm_capture_ops);
 
-        /* DMA pool inizialization (dimension: 512 kB).
-         * total_kbytes can be changed by needs. */
-        err = maestro_init_dmabuf(chip, 512);
-        if (err < 0) {
-            dev_err(&pdev->dev, "maestro: DMA pool init failed (%d)\n", err);
-            goto err_card;
-        }
+	/* AC'97 Inizialization */
+	err = maestro_ac97_attach(chip);
+	if (err < 0) {
+		dev_err(&pdev->dev, "maestro: AC97 attach failed (%d)\n", err);
+		goto err_card;
+	}
 
-        /* ISIS firmware upload */
-        err = maestro_upload_firmware(chip);
-        if (err < 0) {
-            dev_err(&pdev->dev, "maestro: firmware upload failed (%d)\n", err);
-            goto err_card;
-        }
+	/* DMA pool inizialization (dimension: 512 kB).
+	 * total_kbytes can be changed by needs. */
+	err = maestro_init_dmabuf(chip, 512);
+	if (err < 0) {
+		dev_err(&pdev->dev, "maestro: DMA pool init failed (%d)\n", err);
+		goto err_card;
+	}
 
-        /* Metadata */
-        strcpy(card->driver, DRIVER_NAME);
-        strcpy(card->shortname, "Guillemot Maxi Studio ISIS");
-        snprintf(card->longname, sizeof(card->longname),
-                 "%s at 0x%lx, irq %d",
-                 card->shortname, chip->io_base, chip->irq);
+	/* ISIS firmware upload */
+	err = maestro_upload_firmware(chip);
+	if (err < 0) {
+		dev_err(&pdev->dev, "maestro: firmware upload failed (%d)\n", err);
+		goto err_card;
+	}
 
-        err = snd_card_register(card);
-        if (err < 0)
-            goto err_card;
+	/* Metadata */
+	strcpy(card->driver, DRIVER_NAME);
+	strcpy(card->shortname, "Guillemot Maxi Studio ISIS");
+	snprintf(card->longname, sizeof(card->longname),
+			 "%s at 0x%lx, irq %d",
+			 card->shortname, chip->io_base, chip->irq);
 
-        dev_info(&pdev->dev, "maestro: Guillemot Maxi Studio ISIS initialized\n");
-        return 0;
+	err = snd_card_register(card);
+	if (err < 0)
+		goto err_card;
 
-err_card:
-        snd_card_free(card);
-err_irq:
-        free_irq(chip->irq, chip);
-err_region:
-        release_region(chip->io_base, pci_resource_len(pdev, MAESTRO_BAR0));
-err_free:
-        kfree(chip);
-        pci_set_drvdata(pdev, NULL);
-err_disable:
-        pci_disable_device(pdev);
-        return err;
+	dev_info(&pdev->dev, "maestro: Guillemot Maxi Studio ISIS initialized\n");
+	return 0;
+
+	err_card:
+			snd_card_free(card);
+	err_irq:
+			free_irq(chip->irq, chip);
+	err_region:
+			release_region(chip->io_base, pci_resource_len(pdev, MAESTRO_BAR0));
+	err_free:
+			kfree(chip);
+			pci_set_drvdata(pdev, NULL);
+	err_disable:
+			pci_disable_device(pdev);
+			return err;
 }
 
 /* PCI device remove */
