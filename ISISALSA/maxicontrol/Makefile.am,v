@@ -1,0 +1,67 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  start:1.1.1.1 vendor:1.1.1;
+locks    ; strict;
+comment  @# @;
+
+
+1.1
+date     2003.08.28.10.57.57;  author pieterpalmers;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2003.08.28.10.57.57;  author pieterpalmers;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@####### kdevelop will overwrite this part!!! (begin)##########
+
+SUBDIRS = maxicontrol po doc 
+
+EXTRA_DIST = maxicontrol.kdevprj admin AUTHORS COPYING ChangeLog INSTALL README TODO maxicontrol.lsm 
+
+####### kdevelop will overwrite this part!!! (end)############
+# not a GNU package. You can remove this line, if 
+# have all needed files, that a GNU package needs
+AUTOMAKE_OPTIONS = foreign 
+
+$(top_srcdir)/configure.in: configure.in.in $(top_srcdir)/subdirs
+	cd $(top_srcdir) && $(MAKE) -f admin/Makefile.common configure.in ;
+
+$(top_srcdir)/subdirs:
+	cd $(top_srcdir) && $(MAKE) -f admin/Makefile.common subdirs
+
+$(top_srcdir)/acinclude.m4: $(top_srcdir)/admin/acinclude.m4.in $(top_srcdir)/admin/libtool.m4.in
+	@@cd $(top_srcdir) && cat admin/acinclude.m4.in admin/libtool.m4.in > acinclude.m4
+
+MAINTAINERCLEANFILES = subdirs configure.in acinclude.m4 configure.files 
+
+package-messages:
+	$(MAKE) -f admin/Makefile.common package-messages
+	$(MAKE) -C po merge
+
+dist-hook:
+	cd $(top_distdir) && perl admin/am_edit -padmin
+	cd $(top_distdir) && $(MAKE) -f admin/Makefile.common subdirs
+@
+
+
+1.1.1.1
+log
+@Initial import.
+@
+text
+@@

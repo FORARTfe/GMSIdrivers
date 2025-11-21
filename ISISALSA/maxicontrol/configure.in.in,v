@@ -1,0 +1,49 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  start:1.1.1.1 vendor:1.1.1;
+locks    ; strict;
+comment  @# @;
+
+
+1.1
+date     2003.08.28.10.57.57;  author pieterpalmers;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2003.08.28.10.57.57;  author pieterpalmers;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#MIN_CONFIG(3)
+
+AM_INIT_AUTOMAKE(maxicontrol,0.1)
+
+dnl CXXFLAGS="$NOOPT_CXXFLAGS" dnl __kdevelop[noopt]__
+dnl CFLAGS="$NOOPT_CFLAGS" dnl __kdevelop[noopt]__
+dnl CXXFLAGS="$CXXFLAGS $USE_EXCEPTIONS" dnl __kdevelop[exc]__
+
+dnl KDE_NEED_FLEX dnl __kdevelop__
+dnl AC_PROG_YACC dnl __kdevelop__
+
+@
+
+
+1.1.1.1
+log
+@Initial import.
+@
+text
+@@
