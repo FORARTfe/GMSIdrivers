@@ -1,0 +1,73 @@
+head	1.2;
+access;
+symbols
+	start:1.1.1.1 vendor:1.1.1;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	2005.03.10.18.07.46;	author jeanseb;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2003.07.21.12.14.41;	author pieterpalmers;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	2003.07.21.12.14.41;	author pieterpalmers;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@makefile-subdirs.patch
+@
+text
+@####### kdevelop will overwrite this part!!! (begin)##########
+bin_PROGRAMS = maxiinit
+
+## INCLUDES were found outside kdevelop specific part
+
+maxiinit_SOURCES = main.cpp 
+maxiinit_LDADD   = lib/libpci.a
+
+SUBDIRS = docs lib
+
+EXTRA_DIST = main.cpp 
+
+####### kdevelop will overwrite this part!!! (end)############
+# set the include path found by configure
+INCLUDES= $(all_includes)
+ 
+# the library search path.
+maxiinit_LDFLAGS = $(all_libraries) 
+                                                                                
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d9 1
+a9 1
+SUBDIRS = docs 
+@
+
+
+1.1.1.1
+log
+@Initial import.
+@
+text
+@@

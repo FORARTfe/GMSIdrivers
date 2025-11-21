@@ -1,0 +1,48 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  start:1.1.1.1 vendor:1.1.1;
+locks    ; strict;
+comment  @ * @;
+
+
+1.1
+date     2003.07.21.12.14.45;  author pieterpalmers;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2003.07.21.12.14.45;  author pieterpalmers;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#define ARCH_I386
+#define OS_LINUX
+#define HAVE_PM_LINUX_PROC
+#define HAVE_LINUX_BYTEORDER_H
+#define PATH_PROC_BUS_PCI "/proc/bus/pci"
+#define HAVE_PM_INTEL_CONF
+#define HAVE_PM_DUMP
+#define PATH_PCI_IDS "/usr/share/pci.ids"
+#define HAVE_OWN_HEADER_H
+#define PCILIB_VERSION "0.0"
+@
+
+
+1.1.1.1
+log
+@Initial import.
+@
+text
+@@

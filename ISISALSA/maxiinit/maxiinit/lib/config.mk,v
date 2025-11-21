@@ -1,0 +1,45 @@
+head     1.1;
+branch   1.1.1;
+access   ;
+symbols  start:1.1.1.1 vendor:1.1.1;
+locks    ; strict;
+comment  @# @;
+
+
+1.1
+date     2003.07.21.12.14.45;  author pieterpalmers;  state Exp;
+branches 1.1.1.1;
+next     ;
+
+1.1.1.1
+date     2003.07.21.12.14.45;  author pieterpalmers;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+
+1.1
+log
+@Initial revision
+@
+text
+@ARCH_I386=1
+OS_LINUX=1
+HAVE_PM_LINUX_PROC=1
+HAVE_LINUX_BYTEORDER_H=1
+HAVE_PM_INTEL_CONF=1
+HAVE_PM_DUMP=1
+HAVE_OWN_HEADER_H=1
+@
+
+
+1.1.1.1
+log
+@Initial import.
+@
+text
+@@
