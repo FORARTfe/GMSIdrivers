@@ -1,7 +1,0 @@
-config SND_PDPLUS
-	tristate "Digigram VX222"
-	depends on SND
-	help
-	  Say 'Y' or 'M' to include support for Sek'D/Marian Prodif Plus
-          soundcard.
-
