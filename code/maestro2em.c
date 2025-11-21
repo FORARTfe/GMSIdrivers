@@ -141,6 +141,42 @@ struct maestro_pcm_channel {
     spinlock_t lock;                /* protects channel state */
 };
 
+static const struct snd_pcm_hardware maestro_pcm_hw_playback = {
+    .info = SNDRV_PCM_INFO_MMAP |
+            SNDRV_PCM_INFO_INTERLEAVED |
+            SNDRV_PCM_INFO_BLOCK_TRANSFER,
+    .formats = SNDRV_PCM_FMTBIT_S16_LE,
+    .rates = SNDRV_PCM_RATE_8000_48000,
+    .rate_min = 8000,
+    .rate_max = 48000,
+    .channels_min = 1,
+    .channels_max = 8,
+    .buffer_bytes_max = 512 * 1024,   /* must not exceed DMA pool size */
+    .period_bytes_min = 64,
+    .period_bytes_max = 128 * 1024,
+    .periods_min = 2,
+    .periods_max = 1024,
+    .fifo_size = 0,
+};
+
+static const struct snd_pcm_hardware maestro_pcm_hw_capture = {
+    .info = SNDRV_PCM_INFO_MMAP |
+            SNDRV_PCM_INFO_INTERLEAVED |
+            SNDRV_PCM_INFO_BLOCK_TRANSFER,
+    .formats = SNDRV_PCM_FMTBIT_S16_LE,
+    .rates = SNDRV_PCM_RATE_8000_48000,
+    .rate_min = 8000,
+    .rate_max = 48000,
+    .channels_min = 1,
+    .channels_max = 8,
+    .buffer_bytes_max = 512 * 1024,   /* must not exceed DMA pool size */
+    .period_bytes_min = 64,
+    .period_bytes_max = 128 * 1024,
+    .periods_min = 2,
+    .periods_max = 1024,
+    .fifo_size = 0,
+};
+
 /* Open callback shared by playback and capture */
 
 static int maestro_pcm_open_generic(struct snd_pcm_substream *substream,
@@ -210,6 +246,28 @@ static int maestro_pcm_close(struct snd_pcm_substream *substream)
 
     return 0;
 }
+
+static const struct snd_pcm_ops maestro_pcm_playback_ops = {
+.open = maestro_pcm_open_playback,
+.close = maestro_pcm_close,
+.ioctl = snd_pcm_lib_ioctl,
+.hw_params = maestro_pcm_hw_params,
+.hw_free = maestro_pcm_hw_free,
+.prepare = maestro_pcm_prepare,
+.trigger = maestro_pcm_trigger,
+.pointer = maestro_pcm_pointer,
+};
+
+static const struct snd_pcm_ops maestro_pcm_capture_ops = {
+.open = maestro_pcm_open_capture,
+.close = maestro_pcm_close,
+.ioctl = snd_pcm_lib_ioctl,
+.hw_params = maestro_pcm_hw_params,
+.hw_free = maestro_pcm_hw_free,
+.prepare = maestro_pcm_prepare,
+.trigger = maestro_pcm_trigger,
+.pointer = maestro_pcm_pointer,
+};
 
 /* hw_params: allocate from maestro DMA pool */
 
@@ -449,42 +507,6 @@ static unsigned short maestro_ac97_read(struct snd_ac97 *ac97, unsigned short re
     spin_unlock_irqrestore(&chip->reg_lock, flags);
     return data;
 }
-
-static const struct snd_pcm_hardware maestro_pcm_hw_playback = {
-    .info = SNDRV_PCM_INFO_MMAP |
-            SNDRV_PCM_INFO_INTERLEAVED |
-            SNDRV_PCM_INFO_BLOCK_TRANSFER,
-    .formats = SNDRV_PCM_FMTBIT_S16_LE,
-    .rates = SNDRV_PCM_RATE_8000_48000,
-    .rate_min = 8000,
-    .rate_max = 48000,
-    .channels_min = 2,
-    .channels_max = 2,
-    .buffer_bytes_max = 512 * 1024,   /* must not exceed DMA pool size */
-    .period_bytes_min = 64,
-    .period_bytes_max = 128 * 1024,
-    .periods_min = 2,
-    .periods_max = 1024,
-    .fifo_size = 0,
-};
-
-static const struct snd_pcm_hardware maestro_pcm_hw_capture = {
-    .info = SNDRV_PCM_INFO_MMAP |
-            SNDRV_PCM_INFO_INTERLEAVED |
-            SNDRV_PCM_INFO_BLOCK_TRANSFER,
-    .formats = SNDRV_PCM_FMTBIT_S16_LE,
-    .rates = SNDRV_PCM_RATE_8000_48000,
-    .rate_min = 8000,
-    .rate_max = 48000,
-    .channels_min = 1,
-    .channels_max = 8,
-    .buffer_bytes_max = 512 * 1024,   /* must not exceed DMA pool size */
-    .period_bytes_min = 64,
-    .period_bytes_max = 128 * 1024,
-    .periods_min = 2,
-    .periods_max = 1024,
-    .fifo_size = 0,
-};
 
 static struct snd_ac97_bus_ops maestro_ac97_bus_ops = {
     .write = maestro_ac97_write,
@@ -728,15 +750,13 @@ static int maestro_upload_firmware(struct maestro *chip)
     outw(0x0144, chip->io_base + 0x68);
     outw(0x0D64, chip->io_base + 0x68);
 
-    mexec (void) chip;
-
     err = request_firmware(&fw, "pci64.bin", &chip->pci->dev);
     if (err < 0) {
         dev_err(&chip->pci->dev, "maestro: cannot load firmware pci64.bin\n");
         return err;
     }
 
-    /* Firmware upload proper should be ported from maxiinit (omitted here) */
+    /* TODO: implement real upload from maxiinit here */
 
     release_firmware(fw);
     return 0;
