@@ -1,0 +1,538 @@
+head	1.15;
+access;
+symbols
+	initial:1.1.1.1 jeanseb:1.1.1;
+locks; strict;
+comment	@ * @;
+
+
+1.15
+date	2007.05.15.09.56.28;	author jeanseb;	state Exp;
+branches;
+next	1.14;
+
+1.14
+date	2006.04.29.20.07.52;	author jeanseb;	state Exp;
+branches;
+next	1.13;
+
+1.13
+date	2005.07.06.18.38.04;	author jeanseb;	state Exp;
+branches;
+next	1.12;
+
+1.12
+date	2005.06.29.18.54.03;	author jeanseb;	state Exp;
+branches;
+next	1.11;
+
+1.11
+date	2005.06.28.16.34.14;	author jeanseb;	state Exp;
+branches;
+next	1.10;
+
+1.10
+date	2005.05.02.19.42.53;	author jeanseb;	state Exp;
+branches;
+next	1.9;
+
+1.9
+date	2005.05.01.12.58.42;	author jeanseb;	state Exp;
+branches;
+next	1.8;
+
+1.8
+date	2005.03.27.15.54.14;	author jeanseb;	state Exp;
+branches;
+next	1.7;
+
+1.7
+date	2004.11.16.13.34.33;	author jeanseb;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	2004.11.16.07.34.23;	author jeanseb;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	2004.11.15.06.36.05;	author jeanseb;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2004.09.01.11.42.16;	author jeanseb;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2004.06.01.14.03.59;	author jeanseb;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2004.05.10.14.30.23;	author jeanseb;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2004.04.27.17.50.12;	author jeanseb;	state Exp;
+branches
+	1.1.1.1;
+next	;
+
+1.1.1.1
+date	2004.04.27.17.50.12;	author jeanseb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.15
+log
+@Import of 2.6.21 es1968 change.
+Compiling, not tested
+@
+text
+@#ifndef __SAM9707_H
+#define __SAM9707_H
+
+
+
+
+/* ------------------- DEFINES -------------------- */
+
+#define ISIS_DATA     0x46
+#define ISIS_ADDRESS  0x44
+
+
+#define SAM9707_DATA8	0
+#define SAM9707_STATUS	1
+#define SAM9707_CONTROL	1
+#define SAM9707_DATA16	2
+
+/* Memory mapping table IDs */
+#define SAM_MMT_ID_MASK				0xF7F
+#define SAM_MMT_ID_MEMSIZE			0x00
+#define SAM_MMT_ID_FREE				0x01
+#define SAM_MMT_ID_RESERVED			0x02
+#define SAM_MMT_ID_MMT				0x03
+#define SAM_MMT_ID_MIDI_MT			0x04
+#define SAM_MMT_ID_MIDI_MT_EXT		0x05
+#define SAM_MMT_ID_CTRL_TBL			0x06
+#define SAM_MMT_ID_MIDI_PAR			0x10
+#define SAM_MMT_ID_MIDI_PCM			0x11
+#define SAM_MMT_ID_PCM				0x20
+#define SAM_MMT_ID_SYNTH			0x30
+#define SAM_MMT_ID_EOM				0xF7F
+#define SAM_MMT_ROM_MASK			0x80
+
+/* commands */
+#define SAM_UNK_BOOT0		0x00
+#define SAM_WRT_MEM			0x01
+#define SAM_RD_MEM			0x02
+#define	SAM_GET_MMT			0x03
+#define SAM_UNK_1			0x04
+#define SAM_UNK_2			0x05
+#define	SAM_MASTER_VOL		0x07
+#define SAM_REC_MODE		0x08
+#define SAM_REC_CFG			0x09
+#define SAM_REC_VOL			0x0a
+#define SAM_TRANS_ON_OFF	0x0b
+#define SAM_TANS_GMCH		0x0c
+#define SAM_TRANS_VAL		0x0d
+#define	SAM_TRANS_REVSEND	0x0e
+#define SAM_TRANS_CHRSEND	0x0f
+#define SAM_ES_LBL			0x10
+#define SAM_EQ_MLBL			0x11
+#define SAM_EQ_MHBL			0x12
+#define SAM_EQ_HBL			0x13
+#define SAM_EQ_LBR			0x14
+#define SAM_EQ_MLBR			0x15
+#define SAM_EQ_MHBR			0x16
+#define SAM_EQ_HBR			0x17
+#define SAM_EQF_LB			0x18
+#define SAM_EQF_MLB			0x19
+#define SAM_EQF_MHB			0x1a
+#define SAM_EQF_HB			0x1b
+#define	SAM_FILT_ONOFF		0x1e
+#define SAM_BOOST_ONOFF		0x1f
+#define SAM_AUD_SEL			0x20
+#define SAM_AUD_GAINL		0x21
+#define SAM_AUD_GAINR		0x22
+#define SAM_AUDCHR_SEND		0x24
+#define SAM_GMREV_SEND		0x25
+#define SAM_GMCHR_SEND		0x26
+#define SAM_AUDREV_SEND		0x27
+#define SAM_ECH_LEV			0x28
+#define SAM_ECH_TIM			0x29
+#define SAM_ECH_FEED		0x2a
+#define SAM_UNK_3			0x2c
+#define SAM_SUR_VOL			0x30
+#define SAM_SUR_DEL			0x31
+#define SAM_SUR_INP			0x32
+#define SAM_SUR_24			0x33
+#define SAM_AUDL_VOL		0x34
+#define SAM_AUDR_VOL		0x35
+#define SAM_AUDL_PAN		0x36
+#define SAM_AUDR_PAN		0x37
+#define SAM_GM_VOL			0x38
+#define SAM_GM_PAN			0x39
+#define SAM_REV_VOL			0x3a
+#define SAM_CHR_VOL			0x3b
+#define SAM_EN_MIDOUT		0x3d
+#define SAM_CMD_UART_MOD	0x3f /* Switch to UART mode */
+#define SAM_W_OPEN			0x40
+#define SAM_W_CLOSE			0x41
+#define SAM_W_START			0x42
+#define SAM_END_XFER		0x43/* Sent to sam9707 after end of transfer */
+#define SAM_W_PITCH			0x44 /* Change the pitch of the wave during playback */
+#define SAM_W_VOLLEFT		0x45	/* Change the current left volume */
+#define SAM_W_VOLRIGHT		0x46	/* Change the current right volume */
+#define SAM_W_VOLAUXLEFT	0x47 	/* Change the left auxiliary level */
+#define SAM_CMD_GEN_INT		0x48	/* Generate an interrupt */
+#define SAM_W_VOLAUXRIGHT	0x49	/* Change the right auxiliary level */
+#define SAM_W_FILT_FC		0x4a	/* Change filter cutoff frequency */
+#define SAM_W_FILT_Q		0x4b	/* Change filter resonance */
+#define SAM_GET_VOI			0x51
+#define SAM_VOI_OPEN		0x52
+#define SAM_VOI_CLOSE		0x53
+#define SAM_VOI_START		0x54
+#define SAM_VOI_STOP		0x55
+#define SAM_VOI_VOL			0x56
+#define SAM_VOI_MAIN		0x57
+#define SAM_VOI_PITCH		0x58
+#define SAM_VOI_AUX			0x59
+#define SAM_VOI_VOI_FILT	0x5a
+#define SAM_VOI_MEM			0x5b
+#define SAM_GET_POS			0x5c
+#define	SAM_ADD_POS			0x5d
+#define SAM_WAVE_ASS		0x60
+#define SAM_MOD_ASS			0x61
+#define SAM_GM_POST			0x62
+#define SAM_WAVE_POST		0x63
+#define	SAM_MOD_POST		0x64
+#define SAM_AUDECH_POST		0x65
+#define SAM_EFF_POST		0x66
+#define SAM_ECH_ONOFF		0x68
+#define SAM_REV_TYPE		0x69
+#define	SAM_CHR_TYPE		0x6a
+#define SAM_EQU_TYPE		0x6b
+#define	SAM_REV_ONOFF		0x6c
+#define SAM_CHR_ONOFF		0x6d
+#define SAM_SUR_ONOFF		0x6e
+#define SAM_AUD_ONOFF		0x6f
+#define SAM_CMD_HOT_RES		0x70	/* Hot reset */
+#define SAM_POLY_64			0x72
+#define SAM_CHR_DEL			0x74
+#define SAM_CHR_FEED		0x75
+#define SAM_CHR_RATE		0x76
+#define SAM_CHR_DEPTH		0x77
+#define SAM_REV_TIME		0x78
+#define SAM_REV_FEED		0x79
+#define SAM_CMD_EN_CONTROL	0xbe
+#define SAM_RESET			0xff
+
+/*		Datas	*/
+#define SAM_DATA_HOT_RES	0x11 /* Hot reset, hot reset */
+#define SAM_DATA_STOP_DSP	0x00 /* Hot reset, stop DSP */
+#define SAM_DATA_START_DSP	0x01 /* Hot reset, start DSP */
+
+/* acknowledges */
+#define SAM_ACK_CKSUM		0x10
+#define SAM_ACK_IRQ			0x88
+#define SAM_ACK_MOD			0xfe
+
+
+/*	SAM Register  macro */
+#define SAM_INTERRUPT (1<<3)
+
+#define SAM_STATUS_ID_MASK 		0x30
+#define SAM_STATUS_ID_MIDI 		0x00
+#define SAM_STATUS_ID_STREAM 	0x10
+#define SAM_STATUS_ID_MOD		0x20
+#define SAM_STATUS_ID_GENERAL	0x30
+
+#define SAM_STATUS_MPU_MASK		0xc0
+#define SAM_STATUS_MPU_TE		0x80
+#define SAM_STATUS_MPU_TE_BIT	7
+#define SAM_STATUS_MPU_RF		0x40
+#define SAM_STATUS_MPU_RF_BIT	6
+
+
+#define SAM_READ_LOOP_COUNTER 0x6000
+
+#define SAM_HW_BUFF_SIZE_BYTES 1024
+
+
+/*	Structures	*/
+
+
+/* Voice definition */
+struct isis_voice {
+	struct isis_sam9707_chip *chip;
+	u16		volleft;
+	u16		volright;
+};
+/*  definition of the chip-specific record*/
+struct isis_sam9707_chip {
+	struct snd_card *card;
+	struct es1968 *parent;
+	spinlock_t  reg_lock;
+	int firm;		/* 0 card not ready, 1 firm file opend, 2 firm downloaded */
+	u8 *firmptr;
+	long firmpos;
+	struct snd_info_entry *entry;
+	unsigned long io_port;	/* hardware address 	*/
+	struct snd_pcm *pcmi;
+	struct snd_pcm *pcmo;
+	u8 ivoices;	/*! Flags each bit a sam  input channel channel, value = isopend*/
+	struct isis_voice play_voice[2];
+	u8 ovoices; /* Flags each bit is a sam input (0-3 used), value = isopened*/
+	struct isis_voice rec_voice[4];
+	u32  mmt_address; 
+};
+
+#define ISIS_FIRM_SIZE 65536
+
+/* prototypes */
+u8 __isis_read(struct isis_sam9707_chip *chip, u16 reg);
+u8 snd_isis_read(struct isis_sam9707_chip *chip, u16 reg);
+u8 __isis_read_status(struct isis_sam9707_chip *chip);
+u8 snd_isis_read_status(struct isis_sam9707_chip *chip);
+u8 __isis_read_data8(struct isis_sam9707_chip *chip);
+u8 snd_isis_read_data8(struct isis_sam9707_chip *chip);
+
+void __isis_write(struct isis_sam9707_chip *chip, u16 reg, u8 data);
+void isis_write(struct isis_sam9707_chip *chip, u16 reg, u8 data);
+#define snd_isis_write_data8(chip, data) isis_write(chip, SAM9707_DATA8, data)
+#define snd_isis_write_control(chip, data) isis_write(chip, SAM9707_CONTROL, data)
+
+u16 __isis_read16(struct isis_sam9707_chip *chip, u16 reg);
+u16 isis_read16(struct isis_sam9707_chip *chip, u16 reg);
+
+void __isis_write16(struct isis_sam9707_chip *chip, u16 data);
+void isis_write16(struct isis_sam9707_chip *chip, u16 reg, u16 data);
+
+void __isis_burst_write(struct isis_sam9707_chip *chip,u16 *w, int nbw);
+void isis_burst_write(struct isis_sam9707_chip *chip,u16 *w, int nbw);
+										
+int snd_isis_setup_card(struct isis_sam9707_chip *chip);
+
+void snd_sam9707_irq(int irq, struct isis_sam9707_chip *chip);
+
+ int snd_isis_setup_card(struct isis_sam9707_chip *chip);
+
+#endif	/* __sam9707_H */
+@
+
+
+1.14
+log
+@ok as single card
+@
+text
+@d183 2
+a184 2
+	snd_card_t *card;
+	struct snd_es1968 *parent;
+d189 1
+a189 1
+	snd_info_entry_t  *entry;
+d191 2
+a192 2
+	snd_pcm_t *pcmi;
+	snd_pcm_t *pcmo;
+@
+
+
+1.13
+log
+@spliting dream code out of es1968 file.
+@
+text
+@d174 1
+a174 2
+/*  forward definition of the chip-specific record*/
+typedef struct isis_sam9707_chip isis_sam9707_chip_t;
+d177 1
+a177 1
+	isis_sam9707_chip_t *chip;
+d203 6
+a208 6
+u8 __isis_read(isis_sam9707_chip_t *chip, u16 reg);
+u8 snd_isis_read(isis_sam9707_chip_t *chip, u16 reg);
+u8 __isis_read_status(isis_sam9707_chip_t *chip);
+u8 snd_isis_read_status(isis_sam9707_chip_t *chip);
+u8 __isis_read_data8(isis_sam9707_chip_t *chip);
+u8 snd_isis_read_data8(isis_sam9707_chip_t *chip);
+d210 2
+a211 2
+void __isis_write(isis_sam9707_chip_t *chip, u16 reg, u8 data);
+void isis_write(isis_sam9707_chip_t *chip, u16 reg, u8 data);
+d215 2
+a216 2
+u16 __isis_read16(isis_sam9707_chip_t *chip, u16 reg);
+u16 isis_read16(isis_sam9707_chip_t *chip, u16 reg);
+d218 2
+a219 2
+void __isis_write16(isis_sam9707_chip_t *chip, u16 data);
+void isis_write16(isis_sam9707_chip_t *chip, u16 reg, u16 data);
+d221 2
+a222 2
+void __isis_burst_write(isis_sam9707_chip_t *chip,u16 *w, int nbw);
+void isis_burst_write(isis_sam9707_chip_t *chip,u16 *w, int nbw);
+d228 2
+@
+
+
+1.12
+log
+@"cat firmware /proc/asound/card0/firmeware " works now
+@
+text
+@d169 2
+d173 3
+d178 1
+d182 1
+a182 2
+/* definition of the chip-specific record*/
+typedef struct isis_sam9707_chip isis_sam9707_chip_t;
+d191 1
+d203 25
+@
+
+
+1.11
+log
+@reading of mmt adress seem to be ok
+@
+text
+@d74 1
+@
+
+
+1.10
+log
+@control definition changes again.
+Now rack output seem to be good.
+PCM and input will move again.
+@
+text
+@d191 1
+@
+
+
+1.9
+log
+@work on control put and get.
+Level are stored in the voice structure.
+Next step send vol command to sam.
+@
+text
+@d172 2
+a173 2
+	u8		volleft;
+	u8		volright;
+@
+
+
+1.8
+log
+@4 input channel set up in the alsa control.
+Need to change the way they are declared to have the 8 ones.
+@
+text
+@d170 6
+a175 1
+// definition of the chip-specific record
+d188 1
+d190 1
+@
+
+
+1.7
+log
+@voice flags changes
+@
+text
+@d180 2
+a181 1
+	snd_pcm_t *pcm;
+@
+
+
+1.6
+log
+@define correction for EN_MIDOUT
+@
+text
+@d181 2
+a182 1
+	u8 voices;	/*! Flags each bit a sam channel, value = isopend*/
+@
+
+
+1.5
+log
+@Status register defines.
+@
+text
+@d86 1
+a86 1
+#define SAM_CHR_VOL			0x3d
+@
+
+
+1.4
+log
+@ading voices param to check if voice elready opend and related checks.
+Added snd_sam_pcm_ctl_put fonction.
+@
+text
+@d153 13
+@
+
+
+1.3
+log
+@pcm stuff update
+@
+text
+@d168 1
+@
+
+
+1.2
+log
+@create the pcm stuff.
+Stream aren't in now.
+@
+text
+@d166 1
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d166 1
+@
+
+
+1.1.1.1
+log
+@import of branch from es1968 alsa driver.
+low level function detect the driver well
+Still need maxiinit as /proc stuf disabled.
+
+Only maestro exist.
+@
+text
+@@

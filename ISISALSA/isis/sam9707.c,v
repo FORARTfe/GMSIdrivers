@@ -1,0 +1,1615 @@
+head	1.10;
+access;
+symbols;
+locks; strict;
+comment	@ * @;
+
+
+1.10
+date	2007.07.28.12.20.36;	author jeanseb;	state Exp;
+branches;
+next	1.9;
+
+1.9
+date	2007.05.15.09.56.28;	author jeanseb;	state Exp;
+branches;
+next	1.8;
+
+1.8
+date	2006.07.24.09.01.21;	author jeanseb;	state Exp;
+branches;
+next	1.7;
+
+1.7
+date	2006.04.29.20.07.52;	author jeanseb;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	2006.04.17.11.37.00;	author jeanseb;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	2005.12.31.16.10.32;	author jeanseb;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2005.12.31.15.00.51;	author jeanseb;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2005.11.03.13.26.09;	author jeanseb;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2005.10.25.06.40.23;	author jeanseb;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2005.07.06.18.38.04;	author jeanseb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.10
+log
+@removale of .tmp_versions noise
+@
+text
+@/*
+ *  Driver for ISIS sound card
+ *  Copyright (c) by Valette Jean-sebastien <jeanseb@@users.sourceforge.net>.
+ *                  
+ */ 
+
+#include <linux/types.h>
+#include <linux/delay.h>
+#include <linux/pci.h>
+#include <asm/io.h>
+
+#include <sound/driver.h>
+#include <sound/core.h>
+#include <sound/control.h>
+#include <sound/info.h>
+#include <sound/pcm.h>
+#include <linux/interrupt.h>
+
+#include "es1968.h"
+#include "isis.h"
+
+static u16 samBoot[]={
+0xD0CE,0x0111,0xD0CE,0x01D5,0x0001,0x0003,0x0004,0x0006,
+0x0001,0x0003,0x0002,0x0002,0x0006,0x0002,0x0001,0x0006,
+0x0006,0x7A0C,0xE628,0x0001,0xD448,0x1010,0xC4CB,0xD1CB,
+0xE2FE,0x4F01,0xE3FC,0x4E0D,0xE0FA,0x4700,0x8407,0xD148,
+0x0104,0x9107,0x7A08,0x7A09,0xC590,0xD1CB,0xE2FE,0x4F01,
+0xE3EE,0xC74D,0x6DFA,0xD44A,0x012E,0xC449,0x7816,0x7819,
+0x7821,0x781D,0x782E,0x7830,0x7835,0x783A,0x783F,0x7849,
+0x784C,0x786E,0x786D,0x7914,0x01F8,0x7A10,0x7A11,0x7915,
+0x0000,0x7913,0x0007,0x7A12,0xD1CA,0xC44F,0xC4C4,0xD0CE,
+0x01CB,0xC64F,0xC54F,0xC44F,0xCB4C,0xD5C4,0x78C4,0xC64F,
+0xC74F,0xCF4C,0xC64F,0xC54F,0xCB4C,0x3D09,0xC64F,0xC54F,
+0xCB4C,0x3D08,0xD449,0x0130,0xE302,0xC480,0x786C,0xCF80,
+0x78B2,0xC04F,0xC4C9,0x7867,0xC64F,0xC54F,0xCB4C,0xC04F,
+0xC5CB,0x78A9,0xC54F,0xC44F,0xC94A,0xD1CE,0x8405,0x785B,
+0xC54F,0xC44F,0xC94A,0xD1CE,0x8406,0x7855,0xC74F,0xC64F,
+0xCD4E,0xC74F,0xC54F,0xCB4E,0xC74F,0xC44F,0xC94E,0xD1CF,
+0x7892,0xC64F,0xC54F,0xCB4C,0xC549,0xC04F,0x0001,0x0400,
+0xC4CB,0x0115,0x0406,0xC04F,0xD0C1,0x7D01,0x6CFC,0xD0CA,
+0x8418,0x0001,0xC4CB,0xD1C9,0x0001,0x840C,0xE901,0x0000,
+0x7803,0xE911,0xD048,0xFFFF,0x7B00,0xE920,0xD1C8,0xC04F,
+0xC14F,0xC24F,0xC34F,0xC44F,0xC54F,0xC64F,0xC74F,0xD1CA,
+0x8704,0x0001,0x0410,0xC4CB,0xC54F,0xC44F,0xC94A,0x3C0D,
+0xC54F,0xC44F,0xC94A,0x3C0F,0xC54F,0xC44F,0xC94A,0x3C0E,
+0x0001,0xD448,0x2010,0xD548,0x3010,0xD749,0x013A,0xE304,
+0xD448,0x1010,0xD548,0x1010,0xC4CB,0xC5CB,0x0006,0xC4CB,
+0x7B0D,0xE3FE,0x78B5,0x0006,0xC4CB,0x0001,0xC5C9,0x3510,
+0xE2FD,0xCA49,0x0006,0xC5CB,0x78AB,0xC74D,0xC64D,0xC54D,
+0xC44D,0xC34D,0xC24D,0xC14D,0xC04D,0x7A05,0x840C,0x4100,
+0xE101,0x4104,0xE301,0x4201,0xE501,0x4302,0xD94A,0xD94B,
+0x3C0C,0x0001,0x0400,0xC4CB,0xD0C8,0x0110,0x0406,0xC0C1,
+0xC04D,0x7C01,0x6CFC,0xD0CF,0x013B,0xD448,0x55AA,0x78D3,
+0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000
+};
+
+static struct snd_pcm_hardware snd_sam9407_play[2] = {
+	{
+		.info =			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
+				 SNDRV_PCM_INFO_BLOCK_TRANSFER |
+				 SNDRV_PCM_INFO_MMAP_VALID),
+		.formats =		SNDRV_PCM_FMTBIT_S16_LE  /* | SNDRV_PCM_FMTBIT_U8 */,
+		.rates =		SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
+		.rate_min =		4000,
+		.rate_max =		48000,
+		.channels_min =		1,
+		.channels_max =		2,
+		.buffer_bytes_max =	8*SAM_HW_BUFF_SIZE_BYTES,
+		.period_bytes_min =	16,
+		.period_bytes_max =	SAM_HW_BUFF_SIZE_BYTES,
+		.periods_min =		2,
+		.periods_max =		1024,
+		.fifo_size =		0,
+	},
+	{
+		.info =			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
+				 SNDRV_PCM_INFO_BLOCK_TRANSFER |
+				 SNDRV_PCM_INFO_MMAP_VALID),
+		.formats =		SNDRV_PCM_FMTBIT_S16_LE  /* | SNDRV_PCM_FMTBIT_U8 */,
+		.rates =		SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
+		.rate_min =		4000,
+		.rate_max =		48000,
+		.channels_min =		1,
+		.channels_max =		2,
+		.buffer_bytes_max =	8*SAM_HW_BUFF_SIZE_BYTES,
+		.period_bytes_min =	16,
+		.period_bytes_max =	SAM_HW_BUFF_SIZE_BYTES,
+		.periods_min =		2,
+		.periods_max =		1024,
+		.fifo_size =		0,
+	},
+};
+
+static struct snd_pcm_hardware snd_sam9407_rec[4] = {
+	{
+		.info =			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
+				 SNDRV_PCM_INFO_BLOCK_TRANSFER |
+				 SNDRV_PCM_INFO_MMAP_VALID),
+		.formats =		SNDRV_PCM_FMTBIT_S16_LE  /* | SNDRV_PCM_FMTBIT_U8 */,
+		.rates =		SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
+		.rate_min =		4000,
+		.rate_max =		48000,
+		.channels_min =		1,
+		.channels_max =		2,
+		.buffer_bytes_max =	8*SAM_HW_BUFF_SIZE_BYTES,
+		.period_bytes_min =	16,
+		.period_bytes_max =	SAM_HW_BUFF_SIZE_BYTES,
+		.periods_min =		2,
+		.periods_max =		1024,
+		.fifo_size =		0,
+	},
+	{
+		.info =			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
+				 SNDRV_PCM_INFO_BLOCK_TRANSFER |
+				 SNDRV_PCM_INFO_MMAP_VALID),
+		.formats =		SNDRV_PCM_FMTBIT_S16_LE  /* | SNDRV_PCM_FMTBIT_U8 */,
+		.rates =		SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
+		.rate_min =		4000,
+		.rate_max =		48000,
+		.channels_min =		1,
+		.channels_max =		2,
+		.buffer_bytes_max =	8*SAM_HW_BUFF_SIZE_BYTES,
+		.period_bytes_min =	16,
+		.period_bytes_max =	SAM_HW_BUFF_SIZE_BYTES,
+		.periods_min =		2,
+		.periods_max =		1024,
+		.fifo_size =		0,
+	},
+	{
+		.info =			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
+				 SNDRV_PCM_INFO_BLOCK_TRANSFER |
+				 SNDRV_PCM_INFO_MMAP_VALID),
+		.formats =		SNDRV_PCM_FMTBIT_S16_LE  /* | SNDRV_PCM_FMTBIT_U8 */,
+		.rates =		SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
+		.rate_min =		4000,
+		.rate_max =		48000,
+		.channels_min =		1,
+		.channels_max =		2,
+		.buffer_bytes_max =	8*SAM_HW_BUFF_SIZE_BYTES,
+		.period_bytes_min =	16,
+		.period_bytes_max =	SAM_HW_BUFF_SIZE_BYTES,
+		.periods_min =		2,
+		.periods_max =		1024,
+		.fifo_size =		0,
+	},
+	{
+		.info =			(SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED |
+				 SNDRV_PCM_INFO_BLOCK_TRANSFER |
+				 SNDRV_PCM_INFO_MMAP_VALID),
+		.formats =		SNDRV_PCM_FMTBIT_S16_LE  /* | SNDRV_PCM_FMTBIT_U8 */,
+		.rates =		SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_48000,
+		.rate_min =		4000,
+		.rate_max =		48000,
+		.channels_min =		1,
+		.channels_max =		2,
+		.buffer_bytes_max =	8*SAM_HW_BUFF_SIZE_BYTES,
+		.period_bytes_min =	16,
+		.period_bytes_max =	SAM_HW_BUFF_SIZE_BYTES,
+		.periods_min =		2,
+		.periods_max =		1024,
+		.fifo_size =		0,
+	},
+}; 
+
+
+/*
+ * 		Read a byte register on SAM 9707
+ * 
+ *    First index the register reg with maestro IDMA_ADRESS register
+ *    then read is value in maestro IDMA_DATA register
+ * 
+ */
+
+ u8 __isis_read(struct isis_sam9707_chip *chip, u16 reg) {
+	int value;
+	
+	outw(reg, chip->io_port + ISIS_ADDRESS);
+	value = inw(chip->io_port + ISIS_DATA) & 0xff;
+	return value;
+}
+
+ u8 snd_isis_read(struct isis_sam9707_chip *chip, u16 reg) {
+	unsigned long flags;
+	u8 data;
+	
+	spin_lock_irqsave(&chip->reg_lock, flags);
+	data =  __isis_read(chip, reg);
+	spin_unlock_irqrestore(&chip->reg_lock, flags);
+	return data;
+}
+
+
+ u8 __isis_read_status(struct isis_sam9707_chip *chip) {
+	int value;
+	
+	value = __isis_read(chip, SAM9707_STATUS);
+	return value;
+}
+
+
+ u8 snd_isis_read_status(struct isis_sam9707_chip *chip) {
+	unsigned long flags;
+	u8 data;
+	
+	spin_lock_irqsave(&chip->reg_lock, flags);
+	data =  __isis_read_status(chip);
+	spin_unlock_irqrestore(&chip->reg_lock, flags);
+	return data;
+}
+
+ u8 __isis_read_data8(struct isis_sam9707_chip *chip) {
+	int value;
+	int loop =SAM_READ_LOOP_COUNTER;
+	 
+	while(--loop & (__isis_read_status(chip) & (0x80)));
+	value = __isis_read(chip, SAM9707_DATA8);
+	return value;
+}
+
+
+ u8 snd_isis_read_data8(struct isis_sam9707_chip *chip) {
+	unsigned long flags;
+	u8 data;
+	
+	spin_lock_irqsave(&chip->reg_lock, flags);
+	data =  __isis_read_data8(chip);
+	spin_unlock_irqrestore(&chip->reg_lock, flags);
+	return data;
+}
+
+/* from old stuff to test */
+static inline int isis_dream_outb(struct isis_sam9707_chip *chip,u16 reg,int value)
+{
+        int count=0;
+        int status;
+
+        do
+        {
+                outw(1,chip->io_port + 0x44); /* select status register */
+                status = inw(chip->io_port + 0x46) & 0xff;
+                outw(2,chip->io_port + 0x44); /* select back data16 register */
+        }
+        while((count++ < 0x6000) && ((status & 0x40) != 0));
+        printk("isis.o: outb = status %x, count %d\n", status, count);
+        /*              SAM READY */
+        if(count<= 0x6000)
+        {
+                outw(reg & 0xff, chip->io_port + 0x44);
+                outw(value & 0xff, chip->io_port + 0x46);
+                outw(2, chip->io_port + 0x44);
+                return 0;
+        }
+        else
+                return -EIO;
+
+}
+
+
+/*
+ * 		Write a byte register on SAM 9707
+ * 
+ *    First index the status register with maestro IDMA_ADRESS register
+ *    then wait for status indicate sam is ready 
+ * 	  then index teh reg register and last 
+ *    Write data value in maestro IDMA_DATA register
+ * 
+ */
+
+ void __isis_write(struct isis_sam9707_chip *chip, u16 reg, u8 data) {
+	int tmploop= SAM_READ_LOOP_COUNTER;
+	int tmp;
+	
+	outw(SAM9707_STATUS, chip->io_port + ISIS_ADDRESS);
+	while(tmploop-- && (
+		((tmp = inw(chip->io_port+ISIS_DATA)) &  0x40)!=0x40));
+	outw(reg, chip->io_port + ISIS_ADDRESS);
+	outw(data & 0xff, chip->io_port + ISIS_DATA);
+}
+
+
+ void isis_write(struct isis_sam9707_chip *chip, u16 reg, u8 data) {
+	unsigned long flags;
+	
+	spin_lock_irqsave(&chip->reg_lock, flags);
+	__isis_write(chip, reg, data);
+	spin_unlock_irqrestore(&chip->reg_lock, flags);
+}
+
+/*
+ * 		Read a word register on SAM 9707
+ * 
+ *    First index the register reg with maestro IDMA_ADRESS register
+ *    then read is value in maestro IDMA_DATA register
+ * 
+ */
+
+ u16 __isis_read16(struct isis_sam9707_chip *chip, u16 reg) {
+	u16 value;
+	
+	outw(SAM9707_DATA16, chip->io_port +ISIS_ADDRESS);
+	value = inw( chip->io_port + ISIS_DATA);
+	return value;
+}
+
+ u16 isis_read16(struct isis_sam9707_chip *chip, u16 reg) {
+	unsigned long flags;
+	u16 data;
+	
+	spin_lock_irqsave(&chip->reg_lock, flags);
+	data = __isis_read16(chip, reg);
+	spin_unlock_irqrestore(&chip->reg_lock, flags);
+	return data;
+}
+
+/*
+ * 		Write a word register on SAM 9707
+ * 
+ *    First index the status register with maestro IDMA_ADRESS register
+ *    then wait for status indicate sam is ready 
+ * 	  then index teh reg register and last 
+ *    Write data value in maestro IDMA_DATA register
+ * 
+ */
+
+ void __isis_write16(struct isis_sam9707_chip *chip, u16 data) {
+	int tmploop= SAM_READ_LOOP_COUNTER;
+	
+	while(tmploop-- && (__isis_read_status(chip) &  0x40));
+	outw(SAM9707_DATA16, chip->io_port +ISIS_ADDRESS);
+	outw(data, chip->io_port + ISIS_DATA);
+}
+
+ void isis_write16(struct isis_sam9707_chip *chip, u16 reg, u16 data) {
+	unsigned long flags;
+	
+	spin_lock_irqsave(&chip->reg_lock, flags);
+	__isis_write16(chip,  data);
+	spin_unlock_irqrestore(&chip->reg_lock, flags);
+}
+/*
+ * 
+ * 	Burst write to data16 register
+ * 
+ * Write nbw word (u16) value contained in w to the data16 register.
+ * 
+ */
+ void __isis_burst_write(struct isis_sam9707_chip *chip,u16 *w, int nbw) {
+	int tmploop= SAM_READ_LOOP_COUNTER;
+	
+	while(tmploop-- && (__isis_read_status(chip) &  0x40));
+	outw(SAM9707_DATA16, chip->io_port +ISIS_ADDRESS);	
+	while(nbw--) outw(*w++, chip->io_port + ISIS_DATA);
+}
+
+ void isis_burst_write(struct isis_sam9707_chip *chip,u16 *w, int nbw) {
+	unsigned long flags;
+	
+	spin_lock_irqsave(&chip->reg_lock, flags);
+	__isis_burst_write(chip,w, nbw);
+	spin_unlock_irqrestore(&chip->reg_lock, flags);
+}
+
+
+
+
+
+int snd_isis_sam9707_playback_info(struct snd_kcontrol *kcontrol,
+									struct snd_ctl_elem_info*uinfo) {
+
+	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
+	uinfo->count = 2;
+	uinfo->value.integer.min = 0;
+	uinfo->value.integer.max = 0xff;
+	return 0;
+} 
+
+int snd_isis_sam9707_playback_get(struct snd_kcontrol*kcontrol,
+								struct snd_ctl_elem_value *ucontrol) {
+	/* TODO :
+	 * 		Read and return volume value for selected playback channel
+	 */
+	struct isis_voice *v;
+	 
+ 	v=(struct isis_voice *) kcontrol->private_value;
+	ucontrol->value.integer.value[0] = v->volleft;
+	ucontrol->value.integer.value[1] = v->volright;
+//	isis_write16(chip, SAM_W_VOLLEFT, v->volleft);
+//	isis_write16(chip, SAM_W_VOLRIGHT, v->volright);
+	
+	return 0;
+}
+
+int snd_isis_sam9707_playback_put(struct snd_kcontrol*kcontrol,
+										struct snd_ctl_elem_value *ucontrol) {
+	/* TODO :
+	 * 		Set volume value for selected playback channel
+	 */	 
+	struct isis_voice *v;
+	 
+ 	v=(struct isis_voice *) kcontrol->private_value;
+	v->volleft = ucontrol->value.integer.value[0];
+	v->volright = ucontrol->value.integer.value[1];
+//	isis_write16(chip, SAM_W_VOLLEFT, v->volleft);
+//	isis_write16(chip, SAM_W_VOLRIGHT, v->volright);
+	return 0;
+};
+
+
+/*
+ * RACK controls 
+ */
+int snd_isis_sam9707_rack_info(struct snd_kcontrol *kcontrol,
+									struct snd_ctl_elem_info *uinfo) {
+
+	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
+	uinfo->count = 2;
+	uinfo->value.integer.min = 0;
+	uinfo->value.integer.max = 0xff;
+	return 0;
+} 
+
+int snd_isis_sam9707_rack_get(struct snd_kcontrol*kcontrol,
+								struct snd_ctl_elem_value *ucontrol) {
+	/* TODO :
+	 * 		Read and return volume value for selected playback channel
+	 */
+	int vol;
+	 
+ 	vol=(int) kcontrol->private_value;
+	ucontrol->value.integer.value[0] = vol & 0xff;
+	ucontrol->value.integer.value[1] = (vol >> 8) & 0xff;
+	return 0;
+}
+
+int snd_isis_sam9707_rack_put(struct snd_kcontrol*kcontrol,
+										struct snd_ctl_elem_value *ucontrol) {
+	/* TODO :
+	 * 		Set volume value for selected playback channel
+	 */	 
+	int vol;
+	 
+	vol = ucontrol->value.integer.value[0] & 0xff;
+	vol = (ucontrol->value.integer.value[1] & 0xff) << 8;
+	kcontrol->private_value = vol;
+	return 0;
+};
+
+
+
+/*
+ * 
+ * 			Detect and init the card
+ * 
+ */
+
+
+/*
+ * 	
+ * 		isis proc stuf
+ * 
+ */
+int snd_isis_firm_open (struct snd_info_entry *entry,  unsigned short mode, 
+		void **file_private_data)
+{
+	struct isis_sam9707_chip *chip;
+	
+	/*	FIXME
+	 * 	Need to debug init code to get rid of maxiinit
+	 *  for now code is blocked at open time
+	 */
+	snd_printk("Opening Firmware\n");
+	chip = (struct isis_sam9707_chip *) entry->private_data;
+	if(!chip) 
+	{
+		snd_printk("chip is %p\n", chip);
+		return -ENODEV;
+	} 
+	
+	if(chip->firm != 1) 
+		return -EBUSY;
+		
+	if(!(chip->firmptr = (u8 *) kmalloc(ISIS_FIRM_SIZE, GFP_KERNEL))) {
+		snd_printk("Can't allocate memory for firmware\n");
+		return -ENOMEM;		/*	Memory full */
+	}
+	
+	return 0;
+}
+long snd_isis_firm_write(struct snd_info_entry *entry, 
+							void * file_private_data, struct file * file, 
+							const char *buf, unsigned long count,
+							unsigned long pos) {
+	struct isis_sam9707_chip *chip;
+	
+	snd_printk("Downloading Firmware \n");
+	/*		Downlaod the firm */
+	chip = (struct isis_sam9707_chip *) entry->private_data;
+	if(!chip) 
+	{
+		snd_printk("chip is %p\n", chip);
+		return -ENODEV;
+	}
+	snd_printk("Chip is %p \n", chip);
+	snd_printk("pos= %ld\n", chip->firmpos);
+/* should Never happen but better safe than sorry */	
+	if(chip->firm  != 1) return -ENODEV; 
+	copy_from_user(chip->firmptr + chip->firmpos,buf,count);
+	chip->firmpos += count;
+	snd_printk("Firmware Downloaded %ld\n", chip->firmpos);
+	return count;
+}
+int snd_isis_firm_release(struct snd_info_entry * entry,
+                        unsigned short mode, void *file_private_data)
+{
+	struct isis_sam9707_chip *chip;
+	int tmp, loop;
+
+	chip = (struct isis_sam9707_chip *) entry->private_data;
+	if(!chip) 
+	{
+		snd_printk("chip is %p\n", chip);
+		return -ENODEV;
+	}
+	/*if((err = snd_isis_setup_card(chip)))
+		return err;*/
+
+	/*
+ 	 * 	Reset the sam chip
+ 	 */
+
+ 	/*snd_printk("Resetting the chip\n");
+ 	snd_isis_write_control(chip,SAM_CMD_HOT_RES);
+	snd_isis_write_data8(chip,0x11);
+	mdelay(50);*/
+
+
+	/*loop = SAM_READ_LOOP_COUNTER;
+	while((snd_isis_read(chip, SAM9707_STATUS) != 0xa0) & --loop) 
+	{
+		snd_printk("read data8 : %2x\n",snd_isis_read(chip, SAM9707_DATA8));
+	}
+
+	snd_printk("read status : %2x\n",snd_isis_read(chip, SAM9707_STATUS));
+
+	snd_printk("read data8 : %2x\n",snd_isis_read(chip, SAM9707_DATA8));
+	snd_printk("read status : %2x\n",snd_isis_read(chip, SAM9707_STATUS));
+	snd_printk(" Switching to standalone\n");
+
+	
+	//	snd_isis_write_control(chip, SAM_RESET);
+	isis_dream_outb(chip, SAM9707_CONTROL,SAM_RESET);
+
+	snd_printk("read data8 : %2x\n",snd_isis_read(chip, SAM9707_DATA8));
+	snd_printk("read status : %2x\n",snd_isis_read(chip, SAM9707_STATUS));
+
+	mdelay(50);
+	snd_printk("Booting SAM\n");
+	loop = SAM_READ_LOOP_COUNTER;	
+	while(((snd_isis_read(chip, SAM9707_STATUS) & ( 1 << 7)) == 0x00) & --loop) 
+	{
+		snd_printk("read data8 : %2x\n",snd_isis_read(chip, SAM9707_DATA8));
+	}*/
+	/*
+	 * Load bootstrap
+	 */
+	/*	TODO check for failure */
+	__isis_burst_write(chip, samBoot, sizeof(samBoot)/sizeof(u16));
+	mdelay(10);
+
+	/*while(((snd_isis_read(chip, SAM9707_STATUS) & ( 1 << 7)) == 0) & --loop) 
+	{
+		snd_printk("read data8 : %2x\n",snd_isis_read(chip, SAM9707_DATA8));
+	};*/
+	snd_isis_write_control(chip, 0x04);
+
+	snd_isis_write_control(chip, 0x00);
+	
+	loop = SAM_READ_LOOP_COUNTER;	
+	while(((snd_isis_read(chip, SAM9707_STATUS) & ( 1 << 7)) == 0x00) & --loop) 
+	{
+		snd_printk("read data8 : %2x\n",snd_isis_read(chip, SAM9707_DATA8));
+	}
+
+	snd_isis_write_control(chip, 0x05);
+	
+	loop = SAM_READ_LOOP_COUNTER;	
+	while(((snd_isis_read(chip, SAM9707_STATUS) & ( 1 << 7)) == 0x00) & --loop) 
+	{
+		snd_printk("read data8 : %2x\n",snd_isis_read(chip, SAM9707_DATA8));
+	}
+
+	snd_isis_write_control(chip, 0x00);
+		loop = SAM_READ_LOOP_COUNTER;	
+	while(((snd_isis_read(chip, SAM9707_STATUS) & ( 1 << 7)) == 0x00) & --loop) 
+	{
+		snd_printk("read data8 : %2x\n",snd_isis_read(chip, SAM9707_DATA8));
+	}
+
+	snd_isis_write_control(chip, 0x00);
+	loop = SAM_READ_LOOP_COUNTER;
+	while(((snd_isis_read(chip, SAM9707_STATUS) & ( 1 << 7)) == 0x00) & --loop) 
+	{
+		snd_printk("read data8 : %2x\n",snd_isis_read(chip, SAM9707_DATA8));
+	}
+
+	snd_isis_write_control(chip, 0x00);	
+	loop = SAM_READ_LOOP_COUNTER;	
+	while(((snd_isis_read(chip, SAM9707_STATUS) & ( 1 << 7)) == 0x00) & --loop) 
+	{
+		snd_printk("read data8 : %2x\n",snd_isis_read(chip, SAM9707_DATA8));
+	}
+
+	snd_isis_write_control(chip, 0x0b);
+	loop = SAM_READ_LOOP_COUNTER;	
+	while(((snd_isis_read(chip, SAM9707_STATUS) & ( 1 << 7)) == 0x00) & --loop) 
+	{
+		snd_printk("read data8 : %2x\n",snd_isis_read(chip, SAM9707_DATA8));
+	}
+	
+	snd_isis_write_control(chip, 0x00);	
+	loop = SAM_READ_LOOP_COUNTER;	
+	while(((snd_isis_read(chip, SAM9707_STATUS) & ( 1 << 7)) == 0x00) & --loop) 
+	{
+		snd_printk("read data8 : %2x\n",snd_isis_read(chip, SAM9707_DATA8));
+	}
+	
+
+	snd_isis_write_control(chip, 0x02);
+	loop = SAM_READ_LOOP_COUNTER;	
+	while(((snd_isis_read(chip, SAM9707_STATUS) & ( 1 << 7)) == 0x00) & --loop) 
+	{
+		snd_printk("read data8 : %2x\n",snd_isis_read(chip, SAM9707_DATA8));
+	}
+
+	snd_isis_write_control(chip, 0x00);
+	loop = SAM_READ_LOOP_COUNTER;	
+	while(((snd_isis_read(chip, SAM9707_STATUS) & ( 1 << 7)) == 0x00) & --loop) 
+	{
+		snd_printk("read data8 : %2x\n",snd_isis_read(chip, SAM9707_DATA8));
+	}
+	
+	snd_isis_write_control(chip, 0x00);
+	loop = SAM_READ_LOOP_COUNTER;	
+	while(((snd_isis_read(chip, SAM9707_STATUS) & ( 1 << 7)) == 0x00) & --loop) 
+	{
+		snd_printk("read data8 : %2x\n",snd_isis_read(chip, SAM9707_DATA8));
+	}
+
+	snd_isis_write_control(chip, 0x57);
+	loop = SAM_READ_LOOP_COUNTER;	
+	while(((snd_isis_read(chip, SAM9707_STATUS) & ( 1 << 7)) == 0x00) & --loop) 
+	{
+		snd_printk("read data8 : %2x\n",snd_isis_read(chip, SAM9707_DATA8));
+	}
+
+	snd_isis_write_control(chip, 0x6b);
+	loop = SAM_READ_LOOP_COUNTER;	
+	while(((snd_isis_read(chip, SAM9707_STATUS) & ( 1 << 7)) == 0x00) & --loop) 
+	{
+		snd_printk("read data8 : %2x\n",snd_isis_read(chip, SAM9707_DATA8));
+	}
+	mdelay(10);  
+	loop = SAM_READ_LOOP_COUNTER;	
+	while(((snd_isis_read(chip, SAM9707_STATUS) & ( 1 << 7)) == 0x00) & --loop) 
+	{
+		snd_printk("read data8 : %2x\n",snd_isis_read(chip, SAM9707_DATA8));
+	}	
+	snd_printk("loading the firmware. size %d\n", chip->firmpos -0x400);
+	__isis_burst_write(chip, (u16 *) (chip->firmptr + 0x400), ((chip->firmpos - 0x400)/2));
+	
+	loop = SAM_READ_LOOP_COUNTER;	
+	while(((snd_isis_read(chip, SAM9707_STATUS) & ( 1 << 7)) == 0x00) & --loop) 
+	{
+		snd_printk("read data8 : %2x\n",snd_isis_read(chip, SAM9707_DATA8));
+	}
+	/*	boot the firm	*/
+	snd_printk("sending 0x09 \n");
+	snd_isis_write_control(chip, 0x09);
+	loop = SAM_READ_LOOP_COUNTER;	
+	while(((snd_isis_read(chip, SAM9707_STATUS) & ( 1 << 7)) == 0x00) & --loop) 
+	{
+		snd_printk("read data8 : %2x\n",snd_isis_read(chip, SAM9707_DATA8));
+	}
+	snd_printk("sending 0x00\n");
+	snd_isis_write_control(chip, 0x00);
+	loop = SAM_READ_LOOP_COUNTER;	
+	while(((snd_isis_read(chip, SAM9707_STATUS) & ( 1 << 7)) == 0x00) & --loop) 
+	{
+		snd_printk("read data8 : %2x\n",snd_isis_read(chip, SAM9707_DATA8));
+	}
+
+	snd_printk("sending 0x02 loop=%d\n",loop);
+	snd_isis_write_control(chip, 0x02);
+	loop = SAM_READ_LOOP_COUNTER;	
+	while(((snd_isis_read(chip, SAM9707_STATUS) & ( 1 << 7)) == 0x00) & --loop) 
+	{
+		snd_printk("read data8 : %2x\n",snd_isis_read(chip, SAM9707_DATA8));
+	}
+	
+	tmp = inw(chip->io_port + 0x18) & ~SAM_INTERRUPT;
+	outw(tmp , chip->io_port + + 0x18);
+		/*	Goto uart mode	*/
+	snd_isis_write_control(chip, SAM_CMD_UART_MOD);
+	
+	mdelay(10);
+	loop = SAM_READ_LOOP_COUNTER;
+	while(((snd_isis_read(chip, SAM9707_STATUS) & ( 1 << 7))== 1) & --loop) 
+	{
+	}
+	
+	if(inw(chip->io_port + 0x1A) & (SAM_INTERRUPT))
+		snd_printk("SAM raised interrupt\n");
+	
+	if((tmp = snd_isis_read(chip, SAM9707_DATA8)) != 0xFE) 
+		snd_printk("WRONG UART MODE ACK %x!!! loop=%x \n", tmp, loop);
+	
+	
+	/*	Enable sam interrupt cascading */
+	tmp = inw(chip->io_port + 0x18) | SAM_INTERRUPT;
+	outw(chip->io_port + 0x18, tmp);		
+	chip->firm = 3; /* Firmware downloaded and SAM is ready */	
+	snd_printk("Doing MMT stuff\n");
+	loop = SAM_READ_LOOP_COUNTER;	
+	while(((snd_isis_read(chip, SAM9707_STATUS) & ( 1 << 7)) == 0x00) & --loop) 
+	{
+		snd_printk("read data8 : %2x\n",snd_isis_read(chip, SAM9707_DATA8));
+	}
+	snd_isis_write_control(chip, SAM_GET_MMT);
+	loop = SAM_READ_LOOP_COUNTER;	
+	while(((snd_isis_read(chip, SAM9707_STATUS) & ( 1 << 7)) == 0x00) & --loop) 
+	{
+		snd_printk("read data8 : %2x\n",snd_isis_read(chip, SAM9707_DATA8));
+	}
+	snd_isis_write_data8(chip,0);
+	chip->mmt_address = snd_isis_read_data8(chip);
+	chip->mmt_address |= snd_isis_read_data8(chip) << 8;
+	chip->mmt_address |= snd_isis_read_data8(chip) << 16;
+	chip->mmt_address |= snd_isis_read_data8(chip) << 24;
+	snd_printk("MMT adress is %4x\n", chip->mmt_address);
+	
+	snd_printk("writting 0x5 to control\n");
+	loop = SAM_READ_LOOP_COUNTER;	
+	while(((snd_isis_read(chip, SAM9707_STATUS) & ( 1 << 7)) == 0x00) & --loop) 
+	{
+		snd_printk("read data8 : %2x\n",snd_isis_read(chip, SAM9707_DATA8));
+	}
+	snd_isis_write_control(chip, SAM_UNK_2);
+	loop = SAM_READ_LOOP_COUNTER;	
+	while(((snd_isis_read(chip, SAM9707_STATUS) & ( 1 << 7)) == 0x00) & --loop) 
+	{
+		snd_printk("read data8 : %2x\n",snd_isis_read(chip, SAM9707_DATA8));
+	}
+	snd_isis_write_data8(chip, 1);
+	
+	
+	snd_printk("writting 0x2c to control\n");
+	loop = SAM_READ_LOOP_COUNTER;	
+	while(((snd_isis_read(chip, SAM9707_STATUS) & ( 1 << 7)) == 0x00) & --loop) 
+	{
+		snd_printk("read data8 : %2x\n",snd_isis_read(chip, SAM9707_DATA8));
+	}
+	snd_isis_write_control(chip, SAM_UNK_3);
+	loop = SAM_READ_LOOP_COUNTER;	
+	while(((snd_isis_read(chip, SAM9707_STATUS) & ( 1 << 7)) == 0x00) & --loop) 
+	{
+		snd_printk("read data8 : %2x\n",snd_isis_read(chip, SAM9707_DATA8));
+	}
+	snd_isis_write_data8(chip, 0);
+
+	snd_printk("unmuting channlels\n");
+	outw(0x07ff,chip->io_port + 0x64); // set GPIO mask
+	tmp = inw(chip->io_port + 0x60 ); //read the GPIO
+	tmp |= 0x0800;
+	outw(tmp, chip->io_port + 0x60); // write new valueto GPIO	
+	
+	return 0;
+}
+
+
+/*
+ *			PCM stuff 
+ */
+
+
+
+int snd_isis_sam9707_play_open(struct snd_pcm_substream *subs) {
+ 	struct isis_sam9707_chip *chip= snd_pcm_substream_chip(subs);
+ 	
+ 	if(chip->ovoices && (1 << subs->number)) 
+ 		return -EBUSY; /* Already opened voice */
+ 	else {
+ 		chip->ovoices |= (1 << subs->number);
+	 	subs->runtime->hw = snd_sam9407_play[0];
+ 		subs->runtime->private_data = 0;
+ 		return 0;
+ 	}
+ };
+ 
+int snd_isis_sam9707_play_close(struct snd_pcm_substream *subs) {
+ 	struct isis_sam9707_chip *chip =  snd_pcm_substream_chip(subs);
+ 		
+ 	chip->ovoices &= ~((1 << subs->number));
+ 	return 0;
+ };
+ 
+int snd_isis_sam9707_rec_open(struct snd_pcm_substream *subs) {
+ 	struct isis_sam9707_chip *chip= snd_pcm_substream_chip(subs);
+ 	
+ 	if(chip->ivoices && (1 << subs->number)) 
+ 		return -EBUSY; /* Already opened voice */
+ 	else {
+ 		chip->ivoices |= (1 << subs->number);
+	 	subs->runtime->hw = snd_sam9407_rec[subs->number];
+ 		subs->runtime->private_data = 0;
+ 		return 0;
+ 	}
+ };
+ 
+ static int snd_isis_sam9707_rec_close(struct snd_pcm_substream *subs) {
+ 	struct isis_sam9707_chip *chip =  snd_pcm_substream_chip(subs);
+ 		
+ 	chip->ivoices &= ~((1 << subs->number));
+ 	return 0;
+ };
+ 
+ /*
+ *  send control data to SAM9707
+ *  and update control table
+ */
+static void snd_sam_pcm_ctl_put(struct isis_sam9707_chip *sam, int chan, u8 ctl, u16 val){
+	int err;
+
+	while((snd_isis_read_status(sam)  & 0x80));
+	snd_isis_write_control(sam,ctl);
+	snd_isis_write_data8(sam, chan);
+	snd_isis_write_data8(sam, val & 0xFF);
+	snd_isis_write_data8(sam, (val << 8));
+};
+ 
+int snd_isis_pcm_hw_params(struct snd_pcm_substream *substream,
+ 	struct snd_pcm_hw_params *hw_params)
+ {
+ 	snd_printk("snd_isis_pcm_hw_params");
+ 	return snd_pcm_lib_malloc_pages(substream, 
+ 			(size_t) params_buffer_bytes(hw_params));
+ };
+ 
+int snd_isis_pcm_hw_free(struct snd_pcm_substream *substream)
+ {
+ 	return snd_pcm_lib_free_pages(substream);
+ };
+ 
+int snd_isis_pcm_prepare(struct snd_pcm_substream *substream)
+{
+	struct isis_sam9707_chip *chip = snd_pcm_substream_chip(substream);
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	u8 format;
+	
+	snd_printk("snd_isis_pcm_prepare\n");
+	/* compute the format byte */
+	format = runtime->channels > 1 ? 0x1 : 0x0;
+	format |= snd_pcm_format_width(runtime->format) > 8 ? 0x2 : 0x0;
+	// FIXME: workaround for the speed problem
+	// I should the correct method to change the clock speed of the SAM
+	// 0.6667 = 11.2896MHz/16.9334MHz
+	// not that much of a problem since speeds up to 48000Hz can be played
+	unsigned int rate=runtime->rate;
+	//rate = (unsigned int)(((float)rate) * 0.6667);
+		
+	/* send the command*/
+	snd_isis_write_control(chip, SAM_W_OPEN);
+	snd_isis_write_data8(chip, substream->number);
+	snd_isis_write_data8(chip, format);
+	snd_isis_write_data8(chip, rate & 0xff);
+	snd_isis_write_data8(chip, rate > 8);	
+	return 0;
+};
+
+int snd_isis_pcm_rec_prepare(struct snd_pcm_substream *substream)
+{
+	struct isis_sam9707_chip *chip = snd_pcm_substream_chip(substream);
+	struct snd_pcm_runtime  *runtime = substream->runtime;
+	u8 format;
+	
+	/* compute the format byte */
+	format = runtime->channels > 1 ? 0x1 : 0x0;
+	format |= snd_pcm_format_width(runtime->format) > 8 ? 0x2 : 0x0;
+	// FIXME: workaround for the speed problem
+	// I should the correct method to change the clock speed of the SAM
+	// 0.6667 = 11.2896MHz/16.9334MHz
+	// not that much of a problem since speeds up to 48000Hz can be played
+	unsigned int rate=runtime->rate;
+	//rate = (unsigned int)(((float)rate) * 0.6667);
+		
+	/* send the command*/ // TODO setup an open for read !
+	//snd_isis_write_control(chip, SAM_W_OPEN);
+	//snd_isis_write_data8(chip, substream->number);
+	//snd_isis_write_data8(chip, format);
+	//snd_isis_write_data8(chip, rate & 0xff);
+	//snd_isis_write_data8(chip, rate > 8);	
+	return 0;
+};
+
+int snd_isis_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
+{
+	struct isis_sam9707_chip *chip = snd_pcm_substream_chip(substream);
+	
+	snd_printk("snd_isis_pcm_trigger : %x\n", cmd);
+	switch (cmd)
+	{
+		case SNDRV_PCM_TRIGGER_START:
+			snd_isis_write_control(chip, SAM_W_START);
+			snd_isis_write_data8(chip, substream->number);		
+			break;
+		case SNDRV_PCM_TRIGGER_STOP:
+			snd_isis_write_control(chip, SAM_W_CLOSE);
+			snd_isis_write_data8(chip, substream->number);
+			break;
+		default:
+			return -EINVAL;
+	}
+	return 0;
+};
+
+struct snd_pcm_uframes *snd_isis_pcm_rec_pointer(
+			struct snd_pcm_substream  *substream)
+{
+		return 0;
+};
+
+struct snd_pcm_uframes *snd_isis_pcm_pointer(struct snd_pcm_substream *substream)
+{
+		snd_printk("snd_isis_pcm_pointer");
+		return 0;
+};
+
+
+
+
+void snd_isis_pcm_free(struct snd_pcm *pcm) {
+ 
+ 	struct isis_sam9707_chip *chip = (struct isis_sam9707_chip *) pcm->private_data;
+ 	return;
+ };
+ 
+ 
+void snd_sam9707_irq(int irq, struct isis_sam9707_chip *chip)
+{
+		u8 status = snd_isis_read_status(chip);
+		u8 channel;
+		
+		snd_printk("Irq raised for ISIS \nStatus = %2x\n", status);
+		
+		switch(status & SAM_STATUS_ID_MASK) {
+			case SAM_STATUS_ID_MIDI:
+				break;
+			case SAM_STATUS_ID_STREAM:
+				channel = snd_isis_read_data8(chip);
+				// TODO: get the pending data from the pcm stream and burstwrite them				
+				break;			
+			case SAM_STATUS_ID_MOD:
+				break;			
+			case SAM_STATUS_ID_GENERAL:
+				break;
+		}
+		
+}
+ 
+static struct snd_info_entry_ops snd_isis_proc_ops_firm = {
+	.open = snd_isis_firm_open,
+	.release = snd_isis_firm_release,
+	.write = snd_isis_firm_write,
+};
+
+static struct snd_kcontrol_new snd_isis_sam9707_ctl_vol[2] = {
+	{
+		.iface	= SNDRV_CTL_ELEM_IFACE_MIXER,
+		.name	= "PCM Playback Volume Dream 0",
+		.index	= 0,
+		.access	= SNDRV_CTL_ELEM_ACCESS_READWRITE,
+		.private_value	=	0x00000001,
+		.info	= snd_isis_sam9707_playback_info,
+		.get	= snd_isis_sam9707_playback_get,
+		.put	= snd_isis_sam9707_playback_put
+	},
+	{
+		.iface	= SNDRV_CTL_ELEM_IFACE_MIXER,
+		.name	= "PCM Playback Volume Dream 1",
+		.index	= 0,
+		.access	= SNDRV_CTL_ELEM_ACCESS_READWRITE,
+		.private_value	=	0x00000002,
+		.info	= snd_isis_sam9707_playback_info,
+		.get	= snd_isis_sam9707_playback_get,
+		.put	= snd_isis_sam9707_playback_put
+	}
+};
+
+static struct snd_kcontrol_new snd_isis_sam9707_rec_ctl_vol[4] = {
+	{
+		.iface	= SNDRV_CTL_ELEM_IFACE_MIXER,
+		.name	= "Rack Rec 0 - 1",
+		.index	= 0,
+		.access	= SNDRV_CTL_ELEM_ACCESS_READWRITE,
+	//	.private_values	=	0x000000ff,
+		.info	= snd_isis_sam9707_playback_info,
+		.get	= snd_isis_sam9707_playback_get,
+		.put	= snd_isis_sam9707_playback_put
+	},
+	{
+		.iface	= SNDRV_CTL_ELEM_IFACE_MIXER,
+		.name	= "Rack Rec 2-3",
+		.index	= 0,
+		.access	= SNDRV_CTL_ELEM_ACCESS_READWRITE,
+	//	.private_values	=	0x000000ff,
+		.info	= snd_isis_sam9707_playback_info,
+		.get	= snd_isis_sam9707_playback_get,
+		.put	= snd_isis_sam9707_playback_put
+	},
+	{
+		.iface	= SNDRV_CTL_ELEM_IFACE_MIXER,
+		.name	= "Rack Rec 4-5",
+		.index	= 0,
+		.access	= SNDRV_CTL_ELEM_ACCESS_READWRITE,
+	//	.private_values	=	0x000000ff,
+		.info	= snd_isis_sam9707_playback_info,
+		.get	= snd_isis_sam9707_playback_get,
+		.put	= snd_isis_sam9707_playback_put
+	},
+	{
+		.iface	= SNDRV_CTL_ELEM_IFACE_MIXER,
+		.name	= "Rack Rec 6-7",
+		.index	= 0,
+		.access	= SNDRV_CTL_ELEM_ACCESS_READWRITE,
+	//	.private_values	=	0x000000ff,
+		.info	= snd_isis_sam9707_playback_info,
+		.get	= snd_isis_sam9707_playback_get,
+		.put	= snd_isis_sam9707_playback_put
+	}
+};
+
+static struct snd_kcontrol_new snd_isis_rack_controls[2] = {
+	{
+			.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+			.name = "Master Playback Volume Rack 1-2",
+			.index = 0,
+			.access = SNDRV_CTL_ELEM_ACCESS_READWRITE,
+			.info	= snd_isis_sam9707_rack_info,
+			.get	= snd_isis_sam9707_rack_get,
+			.put	= snd_isis_sam9707_rack_put
+	},
+		{
+			.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+			.name = "Master Playback Volume Rack 3-4",
+			.index = 0,
+			.access = SNDRV_CTL_ELEM_ACCESS_READWRITE,
+			.info	= snd_isis_sam9707_rack_info,
+			.get	= snd_isis_sam9707_rack_get,
+			.put	= snd_isis_sam9707_rack_put
+	}
+};
+
+
+static struct snd_pcm_ops snd_isis_sam9707_pcm_play_ops = {
+	.open = snd_isis_sam9707_play_open,
+	.close = snd_isis_sam9707_play_close,
+	.ioctl = snd_pcm_lib_ioctl,
+	.hw_params = snd_isis_pcm_hw_params,
+	.hw_free = snd_isis_pcm_hw_free,
+	.prepare = snd_isis_pcm_prepare,
+	.trigger = snd_isis_pcm_trigger,
+	.pointer = snd_isis_pcm_pointer,
+};
+
+
+static  struct snd_pcm_ops snd_isis_sam9707_pcm_rec_ops = {
+	.open = snd_isis_sam9707_rec_open,
+	.close = snd_isis_sam9707_rec_close,
+	.ioctl = snd_pcm_lib_ioctl,
+	.hw_params = snd_isis_pcm_hw_params,
+	.hw_free = snd_isis_pcm_hw_free,
+	.prepare = snd_isis_pcm_prepare,
+	.trigger = snd_isis_pcm_trigger,
+	.pointer = snd_isis_pcm_rec_pointer,
+};
+
+
+int __devinit snd_isis_new_pcm(struct isis_sam9707_chip *chip) {
+ 	struct snd_pcm *pcmo;
+ 	struct snd_pcm *pcmi;
+ 	int err;
+ 	int i; /* loop counter */
+// 	if(chip->firm < 2) return -ENODEV;
+	for(i=0;i<2;i++) {
+	 	if((err = snd_pcm_new(chip->card, "ISIS SAM IN", i+1, 
+	 			1, 0, &pcmi)) < 0)
+ 			return err;
+		pcmi->private_data = (struct isis_sam9707 *) chip;
+		strcpy(pcmi->name, "External Rack");
+		chip->pcmi = pcmi;
+		chip->ovoices = 0;
+		snd_pcm_set_ops(pcmi, SNDRV_PCM_STREAM_PLAYBACK,
+			&snd_isis_sam9707_pcm_play_ops);
+		snd_printk("Creating Playback controls\n");
+
+		snd_isis_sam9707_ctl_vol[i].private_value = &(chip->play_voice[i]);
+		if((err = snd_ctl_add(chip->card, 
+				snd_ctl_new1(&snd_isis_sam9707_ctl_vol[i], chip)))<0) {
+			return err;
+		}
+	}
+	snd_printk("new pcm doing record stuff\n");
+	for(i=0;i<4;i++) {
+	 	if((err = snd_pcm_new(chip->card, "ISIS SAM OUT", 4+i+1, 
+	 			0, 1, &pcmo)) < 0)
+ 			return err;
+		pcmo->private_data = (struct isis_sam9707 *) chip;
+		strcpy(pcmo->name, "External Rack");
+		chip->pcmo = pcmo;
+		chip->ivoices = 0;
+		snd_pcm_set_ops(pcmo, SNDRV_PCM_STREAM_CAPTURE,
+			&snd_isis_sam9707_pcm_rec_ops);
+		snd_printk("Creating Record controls\n");
+
+		snd_isis_sam9707_rec_ctl_vol[i].private_value = &(chip->rec_voice[i]);
+		if((err = snd_ctl_add(chip->card, 
+				snd_ctl_new1(&snd_isis_sam9707_rec_ctl_vol[i], chip)))<0) {
+			return err;
+		}	
+	}
+	snd_printk("new pcm exit\n");
+	return 0;
+ };
+ 
+ int snd_isis_setup_card(struct isis_sam9707_chip *chip) {
+	unsigned short w;
+	int loop, err, i;
+	u16 value,tmp;
+	struct snd_info_entry  *entry;	/*	data for retreiving new snd_info_entry */
+	
+	err = snd_card_proc_new(chip->card, "firmware", &entry);
+
+	if(err) return err;	/*	if bad, exit cascading error code */
+	
+	chip->entry = entry;
+	entry->content = SNDRV_INFO_CONTENT_DATA;
+	entry->private_data = chip;
+	entry->c.ops = &snd_isis_proc_ops_firm;
+	entry->size = 65536;
+	entry->mode = S_IFCHR | S_IWUSR;
+	chip->firm = 1;
+	/*tmp = inw(chip->io_port + 0x18) & ~SAM_INTERRUPT;
+	outw(tmp, chip->io_port + 0x18);
+	
+//	snd_isis_write_control(chip, 0x70);	
+	isis_dream_outb(chip, SAM9707_CONTROL, 0x70);
+//	snd_isis_write_data8(chip, 0x11);
+	isis_dream_outb(chip, SAM9707_DATA8, 0x11);
+	mdelay(100);	
+	if((tmp = snd_isis_read_data8(chip)) != 0x00)
+		printk("warning GENINT fail %x\n",tmp);
+	else
+		printk("Isis detection OK\n");
+	tmp = inw(chip->io_port + 0x18) | SAM_INTERRUPT;
+	outw(tmp, chip->io_port + 0x18);*/
+	
+	snd_printk("Creating SAM CHIP\n");
+	// to be moved when firm downloading debugged, now maxiinit does the stuff.
+	if((err = snd_isis_new_pcm(chip))) return err;
+
+	for(i=0; i<2; i++) {
+		if((err = snd_ctl_add(chip->card, 
+			snd_ctl_new1(&snd_isis_rack_controls[i], chip)))<0) {
+				return err;
+		}	
+	}
+
+	/*
+	 * Disabling SAM interrupts 
+	 */
+	tmp = inw(chip->io_port + 0x18) & ~SAM_INTERRUPT;
+	outw(tmp , chip->io_port + + 0x18);
+	/*
+	*	Enabling MPU-401
+	*/
+	pci_read_config_word(chip->parent->pci, 0x50, &w);
+	w |= 0x18;
+	pci_write_config_word(chip->parent->pci, 0x50, w);
+	snd_printk("MPU 401 Enabled\n");
+	/*
+	 * 		Setting up clock source
+	 */
+	value = inw(chip->io_port + 0x64); //read the GPIO mask
+	value &= 0x19b;
+	outw(0x019B, value); // set GPIO mask
+	value = inw(chip->io_port + 0x64); //read the GPIO dir
+	value &= 0xf000;
+	value |= 0x0e64;
+	outw(0x0e64,value); // set GPIO dir
+	value = inw(chip->io_port + 0x60); //read the GPIO
+	value &= 0xf000;
+	value |= 0x0024;
+	outw(value, chip->io_port + 0x60); // write new value to GPIO
+	value = inw(chip->io_port + 0x64); //read the GPIO mask
+	value |= 0xf000;
+	outw(0x019B, chip->io_port + 0x64); // set GPIO mask
+	snd_printk("Clock source set\n");
+	/*
+	 * 	Setting Mistrerious PLD
+	 */
+ 	outw(0x0dff,chip->io_port + 0x64); // set GPIO mask
+	value = inw(chip->io_port + 0x60 ); //read the GPIO
+	value |= 0x0200;
+	outw(value, chip->io_port + 0x60); // write new valueto GPIO
+	snd_printk("PLD set\n");
+	/*
+	 * 	Reset GPIO Mask
+	 */
+ 	outw(0x0fff, chip->io_port + 0x64); // set GPIO mask
+
+	return 0;
+};
+
+ @
+
+
+1.9
+log
+@Import of 2.6.21 es1968 change.
+Compiling, not tested
+@
+text
+@d1192 7
+a1198 2
+	outw(0x019B, chip->io_port + 0x64); // set GPIO mask
+	outw(0x0e64, chip->io_port + 0x68); // set GPIO dir
+d1200 1
+a1200 1
+	value &= 0x000f;
+d1204 1
+a1204 1
+	value |= 0x0fff;
+@
+
+
+1.8
+log
+@change on gpio init
+@
+text
+@d57 1
+a57 1
+static snd_pcm_hardware_t snd_sam9407_play[2] = {
+d94 1
+a94 1
+static snd_pcm_hardware_t snd_sam9407_rec[4] = {
+d231 28
+d367 2
+a368 2
+int snd_isis_sam9707_playback_info(snd_kcontrol_t *kcontrol,
+									snd_ctl_elem_info_t *uinfo) {
+d377 2
+a378 2
+int snd_isis_sam9707_playback_get(snd_kcontrol_t *kcontrol,
+								snd_ctl_elem_value_t *ucontrol) {
+d393 2
+a394 2
+int snd_isis_sam9707_playback_put(snd_kcontrol_t *kcontrol,
+										snd_ctl_elem_value_t *ucontrol) {
+d412 2
+a413 2
+int snd_isis_sam9707_rack_info(snd_kcontrol_t *kcontrol,
+									snd_ctl_elem_info_t *uinfo) {
+d422 2
+a423 2
+int snd_isis_sam9707_rack_get(snd_kcontrol_t *kcontrol,
+								snd_ctl_elem_value_t *ucontrol) {
+d435 2
+a436 2
+int snd_isis_sam9707_rack_put(snd_kcontrol_t *kcontrol,
+										snd_ctl_elem_value_t *ucontrol) {
+d462 1
+a462 1
+int snd_isis_firm_open (snd_info_entry_t *entry,  unsigned short mode, 
+d489 1
+a489 1
+long snd_isis_firm_write(snd_info_entry_t *entry, 
+d512 1
+a512 1
+int snd_isis_firm_release(snd_info_entry_t * entry,
+d530 1
+d536 1
+d550 2
+a551 1
+	snd_isis_write_control(chip, SAM_RESET);
+d786 1
+a786 1
+int snd_isis_sam9707_play_open(snd_pcm_substream_t *subs) {
+d799 1
+a799 1
+int snd_isis_sam9707_play_close(snd_pcm_substream_t *subs) {
+d806 1
+a806 1
+int snd_isis_sam9707_rec_open(snd_pcm_substream_t *subs) {
+d819 1
+a819 1
+ static int snd_isis_sam9707_rec_close(snd_pcm_substream_t *subs) {
+d840 2
+a841 2
+int snd_isis_pcm_hw_params(snd_pcm_substream_t *substream,
+ 	snd_pcm_hw_params_t *hw_params)
+d848 1
+a848 1
+int snd_isis_pcm_hw_free(snd_pcm_substream_t *substream)
+d853 1
+a853 1
+int snd_isis_pcm_prepare(snd_pcm_substream_t *substream)
+d856 1
+a856 1
+	snd_pcm_runtime_t *runtime = substream->runtime;
+d879 1
+a879 1
+int snd_isis_pcm_rec_prepare(snd_pcm_substream_t *substream)
+d882 1
+a882 1
+	snd_pcm_runtime_t *runtime = substream->runtime;
+d904 1
+a904 1
+int snd_isis_pcm_trigger(snd_pcm_substream_t *substream, int cmd)
+d925 2
+a926 2
+snd_pcm_uframes_t snd_isis_pcm_rec_pointer(
+			snd_pcm_substream_t  *substream)
+d931 1
+a931 1
+snd_pcm_uframes_t snd_isis_pcm_pointer(snd_pcm_substream_t  *substream)
+d940 1
+a940 1
+void snd_isis_pcm_free(snd_pcm_t *pcm) {
+d975 1
+a975 1
+static snd_kcontrol_new_t snd_isis_sam9707_ctl_vol[2] = {
+d998 1
+a998 1
+static snd_kcontrol_new_t snd_isis_sam9707_rec_ctl_vol[4] = {
+d1041 1
+a1041 1
+static snd_kcontrol_new_t snd_isis_rack_controls[2] = {
+d1063 1
+a1063 1
+static  snd_pcm_ops_t snd_isis_sam9707_pcm_play_ops = {
+d1075 1
+a1075 1
+static  snd_pcm_ops_t snd_isis_sam9707_pcm_rec_ops = {
+d1088 2
+a1089 2
+ 	snd_pcm_t *pcmo;
+ 	snd_pcm_t *pcmi;
+d1138 1
+a1138 1
+	snd_info_entry_t  *entry;	/*	data for retreiving new snd_info_entry */
+d1154 4
+a1157 2
+	snd_isis_write_control(chip, 0x70);	
+	snd_isis_write_data8(chip, 0x11);
+@
+
+
+1.7
+log
+@ok as single card
+@
+text
+@d247 1
+a247 1
+		(tmp = inw(chip->io_port+ISIS_DATA)) &  0x40));
+d496 2
+a497 2
+//	if((err = snd_isis_setup_card(chip)))
+//		return err;
+d502 1
+a502 1
+ 	snd_printk("Resetting the chip\n");
+d505 1
+a505 1
+	mdelay(50);
+d507 1
+a507 1
+	loop = SAM_READ_LOOP_COUNTER;
+d531 1
+a531 1
+	}
+d539 1
+a539 1
+	while(((snd_isis_read(chip, SAM9707_STATUS) & ( 1 << 7)) == 0) & --loop) 
+d542 1
+a542 1
+	};
+d1120 1
+a1120 1
+	tmp = inw(chip->io_port + 0x18) & ~SAM_INTERRUPT;
+d1131 1
+a1131 1
+	outw(tmp, chip->io_port + 0x18);
+d1159 1
+a1159 1
+	outw(0x0193, chip->io_port + 0x64); // set GPIO mask
+d1162 1
+a1162 1
+	value &= 0xff9f;
+d1165 3
+@
+
+
+1.6
+log
+@compil correct
+seem to have problems at alsa registering (or devfs ?)
+@
+text
+@d174 1
+a174 1
+ u8 __isis_read(isis_sam9707_chip_t *chip, u16 reg) {
+d182 1
+a182 1
+ u8 snd_isis_read(isis_sam9707_chip_t *chip, u16 reg) {
+d193 1
+a193 1
+ u8 __isis_read_status(isis_sam9707_chip_t *chip) {
+d201 1
+a201 1
+ u8 snd_isis_read_status(isis_sam9707_chip_t *chip) {
+d211 1
+a211 1
+ u8 __isis_read_data8(isis_sam9707_chip_t *chip) {
+d221 1
+a221 1
+ u8 snd_isis_read_data8(isis_sam9707_chip_t *chip) {
+d241 1
+a241 1
+ void __isis_write(isis_sam9707_chip_t *chip, u16 reg, u8 data) {
+d253 1
+a253 1
+ void isis_write(isis_sam9707_chip_t *chip, u16 reg, u8 data) {
+d269 1
+a269 1
+ u16 __isis_read16(isis_sam9707_chip_t *chip, u16 reg) {
+d277 1
+a277 1
+ u16 isis_read16(isis_sam9707_chip_t *chip, u16 reg) {
+d297 1
+a297 1
+ void __isis_write16(isis_sam9707_chip_t *chip, u16 data) {
+d305 1
+a305 1
+ void isis_write16(isis_sam9707_chip_t *chip, u16 reg, u16 data) {
+d319 1
+a319 1
+ void __isis_burst_write(isis_sam9707_chip_t *chip,u16 *w, int nbw) {
+d327 1
+a327 1
+ void isis_burst_write(isis_sam9707_chip_t *chip,u16 *w, int nbw) {
+@
+
+
+1.5
+log
+@adding some pci init stuff.
+May need some more.
+still fighting withh mmt table  read/write
+@
+text
+@d17 1
+d488 1
+a488 1
+	int tmp, err,loop;
+@
+
+
+1.4
+log
+@cvs stuff
+@
+text
+@d9 1
+d18 1
+a20 1
+
+d738 1
+a738 1
+	snd_printk("unluting channlels\n");
+d1119 2
+a1120 2
+//	tmp = inw(chip->io_port + 0x18) & ~SAM_INTERRUPT;
+//	outw(tmp, chip->io_port + 0x18);
+d1122 9
+a1130 9
+//	snd_isis_write_control(chip->sam9707_chip, 0x70);	
+//	snd_isis_write_data8(chip->sam9707_chip, 0x11);
+//	mdelay(100);	
+//	if((tmp = snd_isis_read_data8(chip->sam9707_chip)) != 0x00)
+//		printk("warning GENINT fail %x\n",tmp);
+//	else
+//		printk("Isis detection OK\n");
+//	tmp = inw(chip->io_port + 0x18) | SAM_INTERRUPT;
+//	outw(tmp, chip->io_port + 0x18);
+d1151 4
+a1154 4
+//	pci_read_config_word(chip->parent->pci, 0x50, &w);
+//	w |= 0x18;
+//	pci_write_config_word(chip->parent->pci, 0x50, w);
+//	snd_printk("MPU 401 Enabled\n");
+@
+
+
+1.3
+log
+@some log to experiment
+@
+text
+@d373 2
+@
+
+
+1.2
+log
+@test for felipe.
+I think i got the symbol problem.
+@
+text
+@d808 1
+d824 1
+d873 1
+@
+
+
+1.1
+log
+@spliting dream code out of es1968 file.
+@
+text
+@d831 1
+a831 1
+	rate = (unsigned int)(((float)rate) * 0.6667);
+d856 1
+a856 1
+	rate = (unsigned int)(((float)rate) * 0.6667);
+@
+

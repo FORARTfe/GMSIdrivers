@@ -1,0 +1,169 @@
+head	1.3;
+access;
+symbols;
+locks; strict;
+comment	@ * @;
+
+
+1.3
+date	2007.05.15.09.56.28;	author jeanseb;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2006.04.17.11.37.00;	author jeanseb;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2005.12.31.16.10.32;	author jeanseb;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.3
+log
+@Import of 2.6.21 es1968 change.
+Compiling, not tested
+@
+text
+@/*
+ *  Driver for ESS Maestro 1/2/2E Sound Card (started 21.8.99)
+ * 			   Guillemot Maxi isis version.
+ *  Copyright (c) by Matze Braun <MatzeBraun@@gmx.de>.
+ *                   Takashi Iwai <tiwai@@suse.de>
+ * 					 Valette Jean-sebastien
+ *                  
+ *  Most of the driver code comes from Zach Brown(zab@@redhat.com)
+ *	Alan Cox OSS Driver
+ *  Rewritted from card-es1938.c source.
+ *
+ */
+
+#ifndef ES1968_H
+#include <sound/ac97_codec.h>
+
+#define NR_APUS			64
+#define NR_APU_REGS		16
+
+struct es1968 {
+	/* Module Config */
+	int total_bufsize;			/* in bytes */
+
+	int playback_streams, capture_streams;
+
+	unsigned int clock;		/* clock */
+	/* for clock measurement */
+	unsigned int in_measurement: 1;
+	unsigned int measure_apu;
+	unsigned int measure_lastpos;
+	unsigned int measure_count;
+
+	/* buffer */
+	struct snd_dma_buffer dma;
+
+	/* Resources... */
+	int irq;
+	unsigned long io_port;
+	int type;
+	struct pci_dev *pci;
+	struct snd_card *card;
+	struct snd_pcm *pcm;
+	int do_pm;		/* power-management enabled */
+
+	/* DMA memory block */
+	struct list_head buf_list;
+
+	/* ALSA Stuff */
+	struct snd_ac97 *ac97;
+	struct snd_kcontrol *master_switch; /* for h/w volume control */
+	struct snd_kcontrol *master_volume;
+
+	struct snd_rawmidi *rmidi;
+
+	spinlock_t reg_lock;
+	spinlock_t ac97_lock;
+	struct tasklet_struct hwvol_tq;
+	unsigned int in_suspend;
+
+	/* Maestro Stuff */
+	u16 maestro_map[32];
+	int bobclient;		/* active timer instancs */
+	int bob_freq;		/* timer frequency */
+	struct mutex memory_mutex;	/* memory lock */
+
+	/* APU states */
+	unsigned char apu[NR_APUS];
+
+	/* active substreams */
+	struct list_head substream_list;
+	spinlock_t substream_lock;
+
+#ifdef CONFIG_PM
+	u16 apu_map[NR_APUS][NR_APU_REGS];
+#endif
+
+#ifdef SUPPORT_JOYSTICK
+	struct gameport *gameport;
+#endif
+#ifdef SND_ISIS
+	struct isis_sam9707_chip *sam9707_chip;
+#endif
+};
+#endif
+@
+
+
+1.2
+log
+@compil correct
+seem to have problems at alsa registering (or devfs ?)
+@
+text
+@a16 1
+
+d20 1
+a20 1
+struct snd_es1968 {
+d41 2
+a42 2
+	snd_card_t *card;
+	snd_pcm_t *pcm;
+d49 3
+a51 3
+	ac97_t *ac97;
+	snd_kcontrol_t *master_switch; /* for h/w volume control */
+	snd_kcontrol_t *master_volume;
+d53 1
+a53 1
+	snd_rawmidi_t *rmidi;
+d56 1
+a56 1
+	struct semaphore ac97_mutex;	/* ac97 lock */
+d58 1
+d64 1
+a64 1
+	struct semaphore memory_mutex;	/* memory lock */
+d78 1
+a78 2
+	struct gameport gameport;
+	struct resource *res_joystick;
+d84 1
+a84 1
+#endif@
+
+
+1.1
+log
+@adding some pci init stuff.
+May need some more.
+still fighting withh mmt table  read/write
+@
+text
+@d17 1
+@
+
