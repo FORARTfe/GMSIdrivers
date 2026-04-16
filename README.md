@@ -18,5 +18,7 @@ Similar/maybe useful:
 - [ESS Maestro 2E Windows 2000 driver](https://www.dell.com/support/home/en-en/drivers/driversdetails?driverid=r22668) @ Dell;
 - 
 
-Related projects:
+Related open source projects:
 - [Guillemot Maxisound ISIS ALSA driver](http://isisalsa.sourceforge.net/) @ [SOURCEFORGE](https://sourceforge.net/);
+- [Maestro sound driver](https://web.archive.org/web/20041009134154/http://www.zabbo.net/maestro/) by Zach Brown;
+- [An OSS/Lite Driver for the ESS Maestro family of sound cards](https://www.kernel.org/pub/linux/kernel/people/marcelo/linux-2.4/Documentation/sound/Maestro) @ kernel.org;
