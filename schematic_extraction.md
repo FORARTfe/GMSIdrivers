@@ -11,28 +11,27 @@ The schematic details the three main components of the system:
 
 ## 1. Component Inventory
 
-| Reference | Part Number | Function | Key Pins | Sources |
-| :--- | :--- | :--- | :--- | :--- |
-| **IC15** | AT93C46 | EEPROM | UCC, GND, DO, DI, SK, CS, ORS | [360, 389], [390] |
-| **IC15** (page 2) | SRAM | SRAM | A0-A19, D0-D7, WE, CE | [441, 461] |
-| **PCM1718E** | PCM1718E | 18-Bit Stereo Audio DAC | BCKIN, DIN, LRCIN, XTI, XTO, ZERO, FOR, DME, VCC, VDO, MUTE, RSTB, CLKO, D/C R, D/C L, OUTL, OUTR | [636] |
-| **SAM9787** | SAM9787 | Dream Sound Synthesis Chip | A0-A22, D0-D15, CLK, OSC, CE, WE, RD, BOOT, RUN, RESET | [653] |
-| **MK1413** | MK1413 | Low Power Audio Clock Source | CLK, GND, UCC, VCC | [660] |
-| **PCM3881E** | PCM3881E | Audio Codec (?) | DIN, DOUT, INR, OUTR, INL, OUTL, XTI, XTO, FMT0-FMT2, LACIN, BCKIN, RSTB, CPL, CLKIO, AGND2, UCC2 | [704] |
-| **CS8414** | CS8414 | 96 kHz Digital Audio Receiver | ROXP, PACK, RXN, SCK, FSYNC, SDATA, VERF, ERF, FILT, FCK, SEL, VDD, DGND, UCC, AGND | [872] |
-| **CS8402** | CS8402 | Digital Audio Transmitter | MCK, TXP, SCK, FSYNC, SDATA, RST, FCC0-2, CBL, PRO, VDD, GND | [903] |
-| **PCM1728E** | PCM1728E | 24-Bit, 96 kHz Stereo Audio DAC | DIN, VOUT R, VOUT L, SYSCLK, XTI, XTO, BCK, LRCIN, BEKIN, FOR, DME, ZERO, CLKO, MUTE, RSTB, AGND1, AGND2, VCC1, VCC2 | [938, 971] |
-| **PCM1800E** | PCM1800E | 20-Bit Stereo A/D Converter | OUT, INR, INL, RSTB, REFI, REF2, CNR, CPR, MODEL, MODE1, SYSCLK, CPL, FSYNC, UCC, LRCK, VDD, BCK, AGND, DGND | [1033, 1044, 1088, 1096] |
-| **26C31** | 26C31 | RS-422 Dual Differential Line Driver | (Standard pinout) | [795, 985] |
-| **26C32** | 26C32 | RS-422 Dual Differential Line Receiver | (Standard pinout) | [784, 969, 1049] |
-| **74LS74D** | 74LS74D | Dual D-Type Positive-Edge-Triggered Flip-Flop with Preset and Clear | PRE, D, CLK, CLR | [399, 401, 528, 949] |
-| **74AC14D** | 74AC14D | Hex Inverting Schmitt Trigger | (Standard pinout) | [706] |
-| **74AC88D** | 74AC88D | Logic Gate | (Standard pinout) | [715, 722, 724] |
-| **74AC860** | 74AC860 | Logic Gate | (Standard pinout) | [785, 786, 797, 798, 838] |
-| **74AC140** | 74AC140 | Logic Gate | (Standard pinout) | [800] |
-| **74LS140** | 74LS140 | Logic Gate | (Standard pinout) | [847, 880, 976] |
-| **ES1918** | label | Label, possible related chip number | - | [371] |
-| **ES197815** | ESS Maestro-2EM | ESS Maestro-2EM PCI Audio Accelerator | - | [391] |
+| Reference | Part Number | Function | Key Pins |
+| :--- | :--- | :--- | :--- |
+| **IC15** | [AT93C46](https://ww1.microchip.com/downloads/aemDocuments/documents/OTH/ProductDocuments/DataSheets/doc0172Z.pdf) | EEPROM | UCC, GND, DO, DI, SK, CS, ORS |
+| **IC15** (page 2) | SRAM | SRAM | A0-A19, D0-D7, WE, CE |
+| **PCM1718E** | [PCM1718E](https://www.ti.com/lit/ds/symlink/pcm1718.pdf) | 18-Bit Stereo Audio DAC | BCKIN, DIN, LRCIN, XTI, XTO, ZERO, FOR, DME, VCC, VDO, MUTE, RSTB, CLKO, D/C R, D/C L, OUTL, OUTR |
+| **SAM9707** | [SAM9707](https://www.digchip.com/datasheets/download_datasheet.php?id=852066&part-number=SAM9707) | Dream Sound Synthesis Chip | A0-A22, D0-D15, CLK, OSC, CE, WE, RD, BOOT, RUN, RESET |
+| **MK1413** | [MK1413](https://www.renesas.com/en/document/dst/mk1413-datasheet) | Low Power Audio Clock Source | CLK, GND, UCC, VCC |
+| **PCM3001E** | [PCM3001E](https://www.ti.com/lit/gpn/PCM3001) | Audio Codec | DIN, DOUT, INR, OUTR, INL, OUTL, XTI, XTO, FMT0-FMT2, LACIN, BCKIN, RSTB, CPL, CLKIO, AGND2, UCC2 |
+| **CS8414** | [CS8414](https://www.futurlec.com/Datasheet/Others/CS8414.pdf) | 96 kHz Digital Audio Receiver | ROXP, PACK, RXN, SCK, FSYNC, SDATA, VERF, ERF, FILT, FCK, SEL, VDD, DGND, UCC, AGND |
+| **CS8402** | [CS8402](https://www.datasheetarchive.com/pdf/download/distributors/Datasheets-110/DSAP0010796.pdf?h=b7a158491e922ed8634f494117292812%3Ac80ffc7efac119ddb0dca481f62409dbc97596df4666%3A097c48c8ea0564a3169172d1d1fac223) | Digital Audio Transmitter | MCK, TXP, SCK, FSYNC, SDATA, RST, FCC0-2, CBL, PRO, VDD, GND |
+| **PCM1728E** | [PCM1728E](https://www.ti.com/lit/ds/symlink/pcm1728.pdf?ts=1776389914809) | 24-Bit, 96 kHz Stereo Audio DAC | DIN, VOUT R, VOUT L, SYSCLK, XTI, XTO, BCK, LRCIN, BEKIN, FOR, DME, ZERO, CLKO, MUTE, RSTB, AGND1, AGND2, VCC1, VCC2 |
+| **PCM1800E** | [PCM1800E](https://www.ti.com/lit/ds/symlink/pcm1800.pdf?ts=1776362069719) | 20-Bit Stereo A/D Converter | OUT, INR, INL, RSTB, REFI, REF2, CNR, CPR, MODEL, MODE1, SYSCLK, CPL, FSYNC, UCC, LRCK, VDD, BCK, AGND, DGND |
+| **26C31** | [26C31](https://www.ti.com/lit/ds/symlink/am26c31.pdf?ts=1776345837407) | RS-422 Dual Differential Line Driver | (Standard pinout) |
+| **26C32** | [26C32](https://www.ti.com/lit/ds/symlink/am26c32.pdf?ts=1776421866228) | RS-422 Dual Differential Line Receiver | (Standard pinout) |
+| **74LS74D** | [74LS74D](https://www.futurlec.com/Datasheet/74ls/74LS74.pdf) | Dual D-Type Positive-Edge-Triggered Flip-Flop | PRE, D, CLK, CLR |
+| **74AC14D** | [74AC14D](https://www.ti.com/lit/ds/symlink/cd74ac14.pdf?ts=1776421969319) | Hex Inverting Schmitt Trigger | (Standard pinout) |
+| **74AC00D** | 74AC00D | Quad 2-Input NAND Gate | (Standard pinout) |
+| **74AC860** | 74AC860 | Logic Gate | (Standard pinout) |
+| **74AC140** | 74AC140 | Logic Gate | (Standard pinout) |
+| **74LS140** | 74LS140 | Logic Gate | (Standard pinout) |
+| **ES1978MS** | [ESS Maestro-2EM](https://www.dosdays.co.uk/media/ess/Maestro-2_Datasheet.pdf) | ESS Maestro-2EM PCI Audio Accelerator | - |
 
 ## 2. Netlist Extraction
 
@@ -67,11 +66,9 @@ The schematic details the three main components of the system:
     * **TITLE**: isis2
     * **Date**: 09/06/2003
     * **Sheet**: 1/1
-    * **REV**: (empty)
-    * **Document Number**: (empty)
-    * **Header Notes**: "Incomplete schematic of the Guillemot MAXI Studio ISIS soundcard", "(C) 2003 Jimmy Le Rhun. This document is released under the GPL to help Linux driver development for this card.", "See http://isisalsa.sourceforge.net for details. Any comments, error reports are highly appreciated, please write to jlerhun@wanadoo.fr Version 0.7, 08 June 2003"
+    * **Header Notes**: "Incomplete schematic of the Guillemot MAXI Studio ISIS soundcard", "(C) 2003 Jimmy Le Rhun."
 * **Major Sections**: ESS Maestro-2EM subsystem, PCI interface, power section, AT93C46 EEPROM.
-* **Key Chips**: ESS Maestro-2EM (ES197815), AT93C46 EEPROM (IC15).
+* **Key Chips**: ESS Maestro-2EM (ES1978MS), AT93C46 EEPROM (IC15).
 * **Buses**: PCI BUS.
 * **Power/Ground**: +5U, GND, -12U, +12U, JANTA.
 
@@ -83,7 +80,7 @@ The schematic details the three main components of the system:
     * **Sheet**: 1/1
     * **Header**: Mainboard part 2 : Dream
 * **Major Sections**: Dream SAM9707 synthesis subsystem, RAM (SRAM/DRAM) memory, PCM1718E DAC, digital audio section.
-* **Key Chips**: Dream SAM9707 (SAM9787), PCM1718E DAC, MK1413 clock source, PCM3881E codec(?).
+* **Key Chips**: Dream SAM9707, PCM1718E DAC, MK1413 clock source, PCM3001E codec.
 * **Buses**: SRAM Address Bus, RAM Data Bus, DRAM Address Bus, DRAM Data Bus.
 * **Power/Ground**: +5U, GND, UCC.
 
@@ -107,7 +104,7 @@ The schematic details the three main components of the system:
     * **Sheet**: 1/1
     * **Header**: External Box
 * **Major Sections**: MIDI THRU/OUT ports, S/PDIF interfaces (fiber RX/TX), S/PDIF receiver (CS8414) and transmitter (CS8402), multiple audio DACs and ADCs for line in/out on the external box.
-* **Key Chips**: CS8414 S/PDIF receiver (CSA414), CS8402 S/PDIF transmitter (CS8402), PCM1728E DAC, PCM1800E ADC, Logic Gates (74LS140, 74LS740, 74AC880).
+* **Key Chips**: CS8414 S/PDIF receiver, CS8402 S/PDIF transmitter, PCM1728E DAC, PCM1800E ADC, Logic Gates (74LS140, 74LS740, 74AC00D).
 * **Power/Ground**: +5U, GND, VDD, DGND, UCC, AGND.
 
 ---
@@ -116,67 +113,47 @@ The schematic details the three main components of the system:
 
 ### PCI / ISA Bus Connections
 
-* **PCI BUS**: Page 1. Connections like `P\$553 AD 2` [44], `PAD 3` [44] are listed. Further trace would show detailed mapping.
-* **ISA BUS**: `ISA BUS` [130, 529]. Traces show typical ISA signals such as `RESET`, `IRQ`, `DMA` pins for the Dream subsystem.
+* **PCI BUS**: Page 1. Detailed pin traces interface with the ES1978MS.
+* **ISA BUS**: Pages 1 and 2. Traces show typical ISA signals such as `RESET`, `IRQ`, `DMA` pins routing for the Dream SAM9707 subsystem.
 
 ### MIDI TX/RX Paths
 
-* **MIDI_TXD**: [381, 665] - Traces from Maestro to daughter board/external box.
-* **MIDI_RXD**: [382, 667] - Traces from external box to Maestro.
-* **Fiber RX/TX**: [850, 899] - S/PDIF optical interfaces.
+* **MIDI_TXD**: Traces from Maestro to daughter board/external box.
+* **MIDI_RXD**: Traces from external box to Maestro.
+* **Fiber RX/TX**: S/PDIF optical interfaces managed by CS8414 and CS8402.
 
 ### Audio Routing
 
-* **Digital Audio**: `MAESTRO_DOUT` [710] to `PCM1718E` DAC. `S/PDIF` signals between the mainboard and the external box.
+* **Digital Audio**: `MAESTRO_DOUT` to `PCM1718E` DAC. `S/PDIF` signals bridge the mainboard and the external box.
 * **Analog Audio**:
-    * **Input**: CD_IN, MIC_IN, AUX_IN on mainboard; LINE_IN on mainboard. Multiple LINE_INPUT on external box to PCM1800E ADCs.
-    * **Output**: LINE_OUT, Surround OUT on mainboard. Multiple LINE_OUT on external box.
+    * **Input**: CD_IN, MIC_IN, AUX_IN, LINE_IN on mainboard. Multiple LINE_INPUTs on external box routing to PCM1800E ADCs.
+    * **Output**: LINE_OUT, Surround OUT on mainboard. Multiple LINE_OUTs on the external box.
 
 ### GPIO / Control Signals
 
-* **Maestro GPIO**: `GPIO` [48] on Maestro has signals like `OP10_1` [62], `OP10_2` [66], `GP10 36` [71].
-* **Dream GPIO**: `GPIOC8..11` [601] on SAM9707.
-* **Daughter Board GPIO**: `GPIOB` [801]. `GPIOL L` [766] on daughter board connector.
+* **Maestro GPIO**: General Purpose I/O pins control routing/modes on the ES1978MS.
+* **Dream GPIO**: `GPIOC8..11` handled by SAM9707.
+* **Daughter Board GPIO**: `GPIOB` and `GPIOL L` on daughter board connector.
 
 ### Clock Distribution
 
-* **Audio Clocks**: `BIT_CLK` [304], `SCLK1` [297], `SCLK2` [335].
-* **Dream Clocks**: `OSCI` [31], `OSCE` [38]. `SAMPLING CLOCK` [752].
-* **External Box Clocks**: `SYSC` [907], `BCK` [910], `LRCIN` [912], `BEKIN` [917], `CLIKO` [926].
+* **Audio Clocks**: `BIT_CLK`, `SCLK1`, `SCLK2`.
+* **Dream Clocks**: `OSCI`, `OSCE`, `SAMPLING CLOCK`.
+* **External Box Clocks**: `SYSC`, `BCK`, `LRCIN`, `BEKIN`, `CLIKO`.
 
 ### Reset / Power Sequencing
 
-* **Reset**: `ARST` [33], `CRESET` [264], `RESET` [293, 637, 763, 1097]. Control over reset lines is crucial for driver initialisation.
-* **Power**: JANTA [12], +5U [11, 274], GND [43, 69, 103, 203, 249, 277, 280, 359, 377, 384, 390], -12U [4], +12U [7, 777]. JANTA might be analog power.
+* **Reset**: `ARST`, `CRESET`, `RESET`. Crucial initialization lines for driver startup sequence.
+* **Power**: JANTA (likely analog power), +5U, GND, -12U, +12U.
 
 ---
 
-## 5. Regenerated Schematic Text
+## 5. Reverse Engineering Value & Architecture Summary
 
-### KiCad-style Netlist Representation (Critical Paths)
-
-```netlist
-(net (code 1) (name "MAESTRO_DOUT")
-  (node (ref IC_Maestro) (pin Maestro_DOUT_Pin))
-  (node (ref IC_PCM1718E) (pin DIN))
-)
-(net (code 2) (name "LINE_OUT_L")
-  (node (ref IC_PCM1718E) (pin OUTL))
-  (node (ref Connector_LINE_OUT) (pin 1))
-)
-(net (code 3) (name "LINE_OUT_R")
-  (node (ref IC_PCM1718E) (pin OUTR))
-  (node (ref Connector_LINE_OUT) (pin 2))
-)
-(net (code 4) (name "S/PDIF_OUT")
-  (node (ref IC_Maestro) (pin S/PDIF_OUT_Pin))
-  (node (ref IC_CS8402) (pin SDATA))
-)
-(net (code 5) (name "S/PDIF_IN")
-  (node (ref IC_CS8414) (pin SDATA))
-  (node (ref IC_Maestro) (pin S/PDIF_IN_Pin))
-)
-```
+* **Dual-Path Architecture**: The card operates via two distinct but bridged subsystems: the **ESS Maestro-2EM (ES1978MS)** handles standard PCI audio acceleration and routing, while the **Dream SAM9707** operates effectively as an embedded ISA-bus device managing wavetable synthesis and extended MIDI features. 
+* **Initialization Sequence**: The `RESET` and `ARST` lines, combined with clock sources like `MK1413`, mandate a specific power-on sequence in the driver. The Dream SAM9707 requires its `BOOT` and `RUN` pins to be appropriately toggled, likely to load its microcode/firmware into the attached SRAM.
+* **IRQ and DMA**: The Dream subsystem relies heavily on standard ISA `IRQ` and `DMA` logic, whereas the Maestro handles PCI interrupts. Mapping how the Maestro bridges these ISA interrupts to the PCI bus is a primary objective for driver mapping.
+* **Audio Matrixing**: The presence of the `PCM3001E` codec and external `PCM1800E` / `PCM1728E` DACs/ADCs shows a complex I/O matrix. GPIO states on both the Maestro and SAM9707 act as crossbar switches to route I2S/digital audio between the mainboard, the synthesis engine, and the external breakout box.
 
 ## 6. Schematic Representation (Critical Paths)
 ```mermaid
