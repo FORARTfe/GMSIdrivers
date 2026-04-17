@@ -4,6 +4,7 @@
 - [Summary of Parameters of Maestro PCI Audio Accelerators](https://web.archive.org/web/20001018022758/http://www.esstech.com/product/PCIAudio/Maestro.htm) by ESS;
 - [Maestro-2 Product Brief](https://www.dosdays.co.uk/media/ess/Maestro-2_Datasheet.pdf) by ESS (@ [DOS Days](https://www.dosdays.co.uk/));
 - [SAM9707 Integrated Sound Studio](http://www.sewoon.com/icmaster/Semi/atmel/pdf/doc1711.pdf) by Atmel;
+- [ATSAM9707 Integrated Sound Studio](https://www.digchip.com/datasheets/download_datasheet.php?id=852066&part-number=SAM9707) by Atmel;
 - [Guillemot Maxi Studio ISIS specs](https://theretroweb.com/expansioncards/s/guillemot-maxi-studio-isis) by [The Retro Web](https://theretroweb.com/);
 - [Guillemot Maxi Studio Isis DOS support](https://www.vogons.org/viewtopic.php?t=96685) 3ad @ [VOGONS](https://www.vogons.org/);
 - [All about the ISIS](https://www.espace-cubase.org/anglais/page.php?page=topoisis) by [espace-cubase.org](https://espace-cubase.org/anglais/page.php?page=accueil);
