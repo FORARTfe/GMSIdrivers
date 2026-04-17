@@ -176,3 +176,22 @@ The schematic details the three main components of the system:
   (node (ref IC_CS8414) (pin SDATA))
   (node (ref IC_Maestro) (pin S/PDIF_IN_Pin))
 )
+```
+
+## 6. Schematic Representation (Critical Paths)
+```mermaid
+graph TD
+    %% ESS Maestro-2EM Subsystem
+    Maestro["ESS Maestro-2EM<br/>(Subsystem on MB)"] --> EEPROM["AT93C46 EEPROM<br/>(IC15)"]
+    Maestro -- "Digital Audio" --> DAC["PCM1718E DAC<br/>(IC on MB)"]
+    DAC --> LineOut["LINE_OUT<br/>(Mainboard)"]
+
+    %% Dream SAM9707 Subsystem
+    Dream["Dream SAM9707<br/>(Synth on MB)"] --> RAM["[RAM / Synthesis]"]
+    Dream -- "Control/Reset/IRQ/DMA" --> ISA["ISA BUS"]
+
+    %% External Box Connections
+    ExtBox["External Box"] --> IO["[MIDI, S/PDIF, Analog I/O]"]
+    ExtBox -- "Fiber TX/RX, Audio Signals" --> Mainboard["Mainboard"]
+```
+
