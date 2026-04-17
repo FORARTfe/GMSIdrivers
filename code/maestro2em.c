@@ -1729,7 +1729,7 @@ static struct pci_driver maestro_driver = {
 
 module_pci_driver(maestro_driver);
 
-MODULE_AUTHOR("ISISALSA Project <https://github.com/ISISALSA>");
-MODULE_DESCRIPTION("ALSA driver for Guillemot Maxi Studio ISIS — Maestro-2E audio engine");
+MODULE_AUTHOR("GMSIdrivers <https://github.com/FORARTfe>");
+MODULE_DESCRIPTION("Guillemot MaxiStudio ISIS open source drivers re-implementation using LLMs");
 MODULE_VERSION(DRIVER_VERSION);
 MODULE_LICENSE("GPL v2");
