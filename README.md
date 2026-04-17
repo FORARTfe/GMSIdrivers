@@ -9,6 +9,7 @@
 - [Guillemot Maxi Studio Isis DOS support](https://www.vogons.org/viewtopic.php?t=96685) 3ad @ [VOGONS](https://www.vogons.org/);
 - [All about the ISIS](https://www.espace-cubase.org/anglais/page.php?page=topoisis) by [espace-cubase.org](https://espace-cubase.org/anglais/page.php?page=accueil);
 - [maxi isis guillemot et ubuntu](https://forum.ubuntu-fr.org/viewtopic.php?id=148164) @ [ubuntu-fr.org](https://www.ubuntu-fr.org/);
+- [Carte son isis XL sur XP](https://forums.commentcamarche.net/forum/affich-600520-carte-son-isis-xl-sur-xp) @ [Comment Ça Marche forum](https://forums.commentcamarche.net/forum/);
 
 Drivers/softwares:
 - [Guillemot Maxi Studio ISIS CDs](https://archive.org/details/Guillemot_Maxi_Studio_ISIS) @ archive.org;
