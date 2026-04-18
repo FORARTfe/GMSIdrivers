@@ -61,9 +61,14 @@
  * ======================================================================= */
 
 #define DRIVER_NAME      "maestro2em"
-#define DRIVER_VERSION   "0.3"
+#define DRIVER_VERSION   "0.4"
 #define MAESTRO_VENDOR   0x125D
 #define MAESTRO_DEVICE   0x1978
+/* PCI subsystem IDs confirmed from maestro.inf [ESSTech] section:
+ * PCI\VEN_125D&DEV_1978&SUBSYS_001014AF
+ * SubVendor 0x14AF = Guillemot Corp., SubDevice 0x0010 = Maxi Studio ISIS */
+#define ISIS_SUBVENDOR   0x14AF
+#define ISIS_SUBDEVICE   0x0010
 
 /* ── BAR0 I/O port offsets ──────────────────────────────────────────────── */
 
@@ -1502,6 +1507,10 @@ static int maestro_chip_init(struct maestro *chip)
 	w |=  BIT(2);   /* DirectSound on   */
 	w &= ~BIT(1);   /* MPU401 off       */
 	w |=  BIT(0);   /* SB IRQ on        */
+	/* HW volume IRQ deliberately NOT enabled:
+	 * maestro.inf: DisableHWVolCtrl=01 — the ISIS card does not use
+	 * the Maestro hardware volume wheel. ESM_HIRQ_HW_VOLUME stays clear. */
+	w &= ~BIT(6);   /* HW volume IRQ off (DisableHWVolCtrl=1) */
 	outw(w, io + ESM_HOST_IRQ);
 
 	/* ── ASSP registers (required even when ASSP unused) ─────────── */
@@ -1517,28 +1526,37 @@ static int maestro_chip_init(struct maestro *chip)
 		outw(0x01D0 + apu, io + WC_INDEX); outw(0, io + WC_DATA);
 	}
 
-	/* ── IDR7: enable system RAM for WaveCache ────────────────────── */
-	wc_write(chip, IDR7_WAVE_ROMRAM,
-		 wc_read(chip, IDR7_WAVE_ROMRAM) & 0xFF00);
-	wc_write(chip, IDR7_WAVE_ROMRAM,
-		 wc_read(chip, IDR7_WAVE_ROMRAM) | 0x0100);
-	wc_write(chip, IDR7_WAVE_ROMRAM,
-		 wc_read(chip, IDR7_WAVE_ROMRAM) & ~0x0200);
-	wc_write(chip, IDR7_WAVE_ROMRAM,
-		 wc_read(chip, IDR7_WAVE_ROMRAM) | 0x0400);
+	/*
+	 * IDR7 (WAVE_ROMRAM) is written directly below via
+	 * __wp_write(chip, 0x07, 0x1540) — the ES1978-specific value from
+	 * ES197X.vxd supersedes the generic maestro.c read-modify-write.
+	 * The WP register 7 path (WP bus, ESM_INDEX/ESM_DATA) reaches the
+	 * same register as the wc_write(IDR7, ...) path (WC_INDEX/WC_DATA).
+	 * Using the direct write is both simpler and hardware-confirmed.
+	 */
 
 	/* ── WP control registers (from reference [1]) ────────────────── */
 	__wp_write(chip, IDR2_CRAM_DATA, 0x0000);
-	__wp_write(chip, 0x08, 0xB004);
-	__wp_write(chip, 0x09, 0x001B);
-	__wp_write(chip, 0x0A, 0x8000);
-	__wp_write(chip, 0x0B, 0x3F37);
-	__wp_write(chip, 0x0C, 0x0098);
-	/* Parallel output routing */
-	__wp_write(chip, 0x0C, (__wp_read(chip, 0x0C) & ~0xF000) | 0x8000);
-	/* Parallel input routing (recording path) */
-	__wp_write(chip, 0x0C, (__wp_read(chip, 0x0C) & ~0x0F00) | 0x0500);
-	__wp_write(chip, 0x0D, 0x7632);
+	/*
+	 * ES1978-specific WP register values extracted from ES197X.vxd
+	 * Object 1 @ 0x3BBC0 (confirmed by binary analysis of Win9x driver).
+	 * These differ from the generic maestro.c ES1968 values; WP[0x07],
+	 * WP[0x08], WP[0x0A-0x0C], and WP[0x0E] are ES1978-specific.
+	 * WP[0x09]=0x001B and WP[0x0D]=0x7632 are identical to reference.
+	 *
+	 * WP[0x07]=IDR7_WAVE_ROMRAM: 0x1540 enables system RAM + extra bits
+	 *   for ES1978 (vs. read-modify-write in maestro.c that yields ~0x0500)
+	 * WP[0x08-0x0E]: WaveProcessor DSP routing/mixer configuration
+	 * WP[0x0E]=0x0D16: not present in generic maestro.c at all
+	 */
+	__wp_write(chip, 0x07, 0x1540);   /* IDR7: sysRAM + ES1978 mode bits  */
+	__wp_write(chip, 0x08, 0xB723);   /* WP mixer L/R (ES1978: was B004)  */
+	__wp_write(chip, 0x09, 0x001B);   /* WP ctrl confirmed ✓               */
+	__wp_write(chip, 0x0A, 0x5F1F);   /* WP filter (ES1978: was 8000)      */
+	__wp_write(chip, 0x0B, 0xDF9F);   /* WP reverb (ES1978: was 3F37)      */
+	__wp_write(chip, 0x0C, 0x1377);   /* WP routing (ES1978: was 0098)     */
+	__wp_write(chip, 0x0D, 0x7632);   /* WP gain confirmed ✓               */
+	__wp_write(chip, 0x0E, 0x0D16);   /* WP ext (ES1978-only, no maestro.c)*/
 
 	/* ── WaveCache control (size=2MB, enable) ─────────────────────── */
 	outw(inw(io + WC_CONTROL) | BIT(8),  io + WC_CONTROL);
@@ -1597,6 +1615,19 @@ static int maestro_ac97_attach(struct maestro *chip)
 		return err;
 	}
 	dev_info(&chip->pci->dev, "AC97 codec: 0x%08x\n", chip->ac97->id);
+
+	/*
+	 * maestro.inf: DisablePR3State=01 — do NOT allow the AC97 codec
+	 * analog mixer to power down (PR3 state).  Clear PR3 in the AC97
+	 * POWERDOWN register (0x26) to keep the analog section always on.
+	 * This prevents the "pop" artefact and mixer loss after idle timeout.
+	 */
+	{
+		unsigned short pwr = snd_ac97_read(chip->ac97, AC97_POWERDOWN);
+		pwr &= ~0x0004;   /* clear PR3 = analog mixer powerdown     */
+		snd_ac97_write(chip->ac97, AC97_POWERDOWN, pwr);
+	}
+
 	return 0;
 }
 
@@ -1715,6 +1746,14 @@ static void maestro_remove(struct pci_dev *pdev)
 }
 
 static const struct pci_device_id maestro_ids[] = {
+	/*
+	 * Prefer subsystem match for the Guillemot Maxi Studio ISIS.
+	 * Confirmed from maestro.inf: PCI\VEN_125D&DEV_1978&SUBSYS_001014AF
+	 * SubVendor=0x14AF (Guillemot), SubDevice=0x0010.
+	 */
+	{ PCI_DEVICE_SUB(MAESTRO_VENDOR, MAESTRO_DEVICE,
+	                 ISIS_SUBVENDOR, ISIS_SUBDEVICE) },
+	/* Generic fallback for other Maestro-2E variants */
 	{ PCI_DEVICE(MAESTRO_VENDOR, MAESTRO_DEVICE) },
 	{ }
 };
@@ -1729,7 +1768,7 @@ static struct pci_driver maestro_driver = {
 
 module_pci_driver(maestro_driver);
 
-MODULE_AUTHOR("GMSIdrivers <https://github.com/FORARTfe>");
+MODULE_AUTHOR("F.O.R.A.R.T. <https://forart.it>");
 MODULE_DESCRIPTION("Guillemot MaxiStudio ISIS open source drivers re-implementation using LLMs");
 MODULE_VERSION(DRIVER_VERSION);
 MODULE_LICENSE("GPL v2");
