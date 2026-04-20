@@ -1,5 +1,4 @@
 ## Windows driver stack
----
 
 ### Architecture decisions
 
