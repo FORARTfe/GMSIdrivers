@@ -20,7 +20,7 @@ The schematic details the three main components of the system:
 | **MK1413** | [MK1413](https://www.renesas.com/en/document/dst/mk1413-datasheet) | Low Power Audio Clock Source | CLK, GND, UCC, VCC |
 | **PCM3001E** | [PCM3001E](https://www.ti.com/lit/gpn/PCM3001) | Audio Codec | DIN, DOUT, INR, OUTR, INL, OUTL, XTI, XTO, FMT0-FMT2, LACIN, BCKIN, RSTB, CPL, CLKIO, AGND2, UCC2 |
 | **CS8414** | [CS8414](https://www.futurlec.com/Datasheet/Others/CS8414.pdf) | 96 kHz Digital Audio Receiver | ROXP, PACK, RXN, SCK, FSYNC, SDATA, VERF, ERF, FILT, FCK, SEL, VDD, DGND, UCC, AGND |
-| **CS8402** | [CS8402](https://www.datasheetarchive.com/pdf/download/distributors/Datasheets-110/DSAP0010796.pdf?h=b7a158491e922ed8634f494117292812%3Ac80ffc7efac119ddb0dca481f62409dbc97596df4666%3A097c48c8ea0564a3169172d1d1fac223) | Digital Audio Transmitter | MCK, TXP, SCK, FSYNC, SDATA, RST, FCC0-2, CBL, PRO, VDD, GND |
+| **CS8402** | [CS8402](http://analogue-repair.it/Immagini/8402.pdf) | Digital Audio Transmitter | MCK, TXP, SCK, FSYNC, SDATA, RST, FCC0-2, CBL, PRO, VDD, GND |
 | **PCM1728E** | [PCM1728E](https://www.ti.com/lit/ds/symlink/pcm1728.pdf?ts=1776389914809) | 24-Bit, 96 kHz Stereo Audio DAC | DIN, VOUT R, VOUT L, SYSCLK, XTI, XTO, BCK, LRCIN, BEKIN, FOR, DME, ZERO, CLKO, MUTE, RSTB, AGND1, AGND2, VCC1, VCC2 |
 | **PCM1800E** | [PCM1800E](https://www.ti.com/lit/ds/symlink/pcm1800.pdf?ts=1776362069719) | 20-Bit Stereo A/D Converter | OUT, INR, INL, RSTB, REFI, REF2, CNR, CPR, MODEL, MODE1, SYSCLK, CPL, FSYNC, UCC, LRCK, VDD, BCK, AGND, DGND |
 | **26C31** | [26C31](https://www.ti.com/lit/ds/symlink/am26c31.pdf?ts=1776345837407) | RS-422 Dual Differential Line Driver | (Standard pinout) |
