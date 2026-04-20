@@ -1,0 +1,142 @@
+; maestro2em.inf
+; Guillemot Maxi Studio ISIS — WDM/WaveRT Audio Driver
+; Supports: Windows XP SP3 / Vista / 7 / 8 / 10
+; WASAPI exclusive mode (low-latency, ASIO-class) via WaveRT port
+;
+; Hardware references confirmed from:
+;   maestro.inf v4.05.00.0427 (Guillemot Win9x INF)
+;   ES197X.vxd binary analysis
+;   ISIS schematic v0.7 (Jimmy Le Rhun, GPL 2003)
+;
+; PCI: VEN_125D&DEV_1978&SUBSYS_001014AF (Guillemot ISIS)
+
+[Version]
+Signature   = "$Windows NT$"
+Class       = MEDIA
+ClassGUID   = {4d36e96c-e325-11ce-bfc1-08002be10318}
+Provider    = %Guillemot%
+CatalogFile = maestro2em.cat
+DriverVer   = 04/20/2026,0.4.0.0
+
+[Manufacturer]
+%Guillemot% = ISIS, NTx86, NTamd64
+
+; ─── Device list ─────────────────────────────────────────────────────────
+[ISIS.NTx86]
+%ISIS.DeviceDesc% = MAESTRO2EM, PCI\VEN_125D&DEV_1978&SUBSYS_001014AF
+; Generic Maestro-2E fallback (for testing without ISIS board)
+%M2E.DeviceDesc%  = MAESTRO2EM, PCI\VEN_125D&DEV_1978
+
+[ISIS.NTamd64]
+%ISIS.DeviceDesc% = MAESTRO2EM, PCI\VEN_125D&DEV_1978&SUBSYS_001014AF
+%M2E.DeviceDesc%  = MAESTRO2EM, PCI\VEN_125D&DEV_1978
+
+; ─── Install sections ─────────────────────────────────────────────────────
+[MAESTRO2EM]
+Include   = ks.inf, wdmaudio.inf
+Needs     = KS.Registration, WDMAUDIO.Registration.NT
+CopyFiles = Maestro2EM.CopyList
+AddReg    = Maestro2EM.AddReg
+
+[MAESTRO2EM.Interfaces]
+AddInterface = %KSCATEGORY_AUDIO%,   %KSNAME_Wave%,     Maestro2EM.I.Wave
+AddInterface = %KSCATEGORY_RENDER%,  %KSNAME_Wave%,     Maestro2EM.I.Wave
+AddInterface = %KSCATEGORY_CAPTURE%, %KSNAME_Wave%,     Maestro2EM.I.Wave
+AddInterface = %KSCATEGORY_AUDIO%,   %KSNAME_Topology%, Maestro2EM.I.Topo
+
+[MAESTRO2EM.Services]
+AddService = maestro2em, 0x00000002, Maestro2EM.Service
+
+[MAESTRO2EM.NT.CoInstallers]
+AddReg    = CoInst.AddReg
+
+; ─── Service install ──────────────────────────────────────────────────────
+[Maestro2EM.Service]
+DisplayName    = %SvcDesc%
+ServiceType    = 1          ; SERVICE_KERNEL_DRIVER
+StartType      = 3          ; SERVICE_DEMAND_START
+ErrorControl   = 1          ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %12%\maestro2em.sys
+LoadOrderGroup = Audio
+
+; ─── Registry ─────────────────────────────────────────────────────────────
+[Maestro2EM.AddReg]
+; Hardware-confirmed from maestro.inf (Guillemot) + ES197X.vxd analysis:
+
+; Ext amp via GPIO method 1 (GPIO bit 1 = PCM1718E mute)
+HKR,, "TurnOnOffExtAmp",    0x00010001, 0x00000001
+HKR,, "GPIOVal_BM",         0x00010001, 0x00000009
+HKR,, "GPIOVal_NOBM",       0x00010001, 0x00000009
+
+; Hardware volume wheel disabled on ISIS (DisableHWVolCtrl=1 in maestro.inf)
+HKR,, "Enable HW Volume Control", 0x00010001, 0x00000000
+
+; Keep AC97 analog mixer powered (DisablePR3State=1)
+HKR,, "DisablePR3State",    0x00010001, 0x00000001
+
+; S/PDIF enabled (CS8402 present on ISIS external box)
+; 0x01 = PCM+Analog to S/PDIF (same as wdma_m2e.inf SPDIF1)
+HKR,, "SPDIFEnable",        0x00010001, 0x00000001
+
+; AC97 mixer volume limits (1.5 dB/step, values from wdma_es2.inf)
+HKR,, "CDMaxVolume",        0x00010001, 0x00000000
+HKR,, "LineInMaxVolume",    0x00010001, 0x00000004
+HKR,, "MicMaxVolume",       0x00010001, 0x00000005
+
+; Legacy SB traps (FM alias only, from wdma_es2.inf SBTrap=2)
+HKR,, "SBTrap",             0x00010001, 0x00000002
+
+; WDM drivers subclass registration
+HKR, Drivers, SubClasses,, "wave,midi,mixer"
+HKR, Drivers\wave\wdmaud.drv,  Driver,, wdmaud.drv
+HKR, Drivers\midi\wdmaud.drv,  Driver,, wdmaud.drv
+HKR, Drivers\mixer\wdmaud.drv, Driver,, wdmaud.drv
+HKR, Drivers\wave\wdmaud.drv,  Description,, %ISIS.DeviceDesc%
+HKR, Drivers\mixer\wdmaud.drv, Description,, %ISIS.DeviceDesc%
+
+[Maestro2EM.I.Wave]
+AddReg = Maestro2EM.I.Wave.AddReg
+
+[Maestro2EM.I.Wave.AddReg]
+HKR,, FriendlyName,, %Wave.szPname%
+HKR,, CLSID,,        %Proxy.CLSID%
+
+[Maestro2EM.I.Topo]
+AddReg = Maestro2EM.I.Topo.AddReg
+
+[Maestro2EM.I.Topo.AddReg]
+HKR,, FriendlyName,, %Topo.szPname%
+HKR,, CLSID,,        %Proxy.CLSID%
+
+[CoInst.AddReg]
+HKR,, CoInstallers32,, "ksuser.dll,KsUserEntry"
+
+; ─── File copy ────────────────────────────────────────────────────────────
+[DestinationDirs]
+Maestro2EM.CopyList = 12    ; %windir%\system32\drivers
+
+[Maestro2EM.CopyList]
+maestro2em.sys
+
+[SourceDisksNames]
+1 = %DiskName%,,
+
+[SourceDisksFiles]
+maestro2em.sys = 1
+
+; ─── Strings ──────────────────────────────────────────────────────────────
+[Strings]
+Guillemot        = "Guillemot Corporation"
+ISIS.DeviceDesc  = "Guillemot Maxi Studio ISIS Audio (WDM)"
+M2E.DeviceDesc   = "ESS Maestro-2E Audio (WDM)"
+Wave.szPname     = "Guillemot Maxi Studio ISIS"
+Topo.szPname     = "Guillemot Maxi Studio ISIS Mixer"
+SvcDesc          = "Guillemot Maxi Studio ISIS WDM Driver"
+DiskName         = "Guillemot Maxi Studio ISIS Driver Disk"
+
+Proxy.CLSID         = "{17CCA71B-ECD7-11D0-B908-00A0C9223196}"
+KSCATEGORY_AUDIO    = "{6994AD04-93EF-11D0-A3CC-00A0C9223196}"
+KSCATEGORY_RENDER   = "{65E8773E-8F56-11D0-A3B9-00A0C9223196}"
+KSCATEGORY_CAPTURE  = "{65E8773D-8F56-11D0-A3B9-00A0C9223196}"
+KSNAME_Wave         = "Wave"
+KSNAME_Topology     = "Topology"
