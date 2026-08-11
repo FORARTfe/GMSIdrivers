@@ -14,6 +14,7 @@
 - [Guillemot Maxi Studio ISIS infos](http://web.quick.cz/a.tom.x/isis.htm) @ [Project A.Tom.X](http://web.quick.cz/a.tom.x/).
 
 Drivers/softwares:
+- [GuillemotFTP_Maxi_Studio_ISIS_folder](https://www.vogonsdrivers.com/getfile.php?fileid=123&menustate=65,53) @ [VOGONS Vintage Driver Library](http://www.vogonsdrivers.com/)
 - [Guillemot Maxi Studio ISIS CDs](https://archive.org/details/Guillemot_Maxi_Studio_ISIS) @ archive.org;
 - [Guillemot International Sound Card Drivers Download](https://www.soundcard-drivers.com/companies/442.htm) @ Soundcard-Drivers.com;
 - [ESS Technology Maestro-2EM ES1978MS audio + ES56CVH-PI Modem (ES56CVH-PI) WinXP Driver](https://www.xp-drivers.com/drivers/152/152331.htm) @ Xp-Drivers.com;
