@@ -11,7 +11,7 @@
 - [All about the ISIS](https://www.espace-cubase.org/anglais/page.php?page=topoisis) by [espace-cubase.org](https://espace-cubase.org/anglais/page.php?page=accueil);
 - [maxi isis guillemot et ubuntu](https://forum.ubuntu-fr.org/viewtopic.php?id=148164) @ [ubuntu-fr.org](https://www.ubuntu-fr.org/);
 - [Carte son isis XL sur XP](https://forums.commentcamarche.net/forum/affich-600520-carte-son-isis-xl-sur-xp) @ [Comment Ça Marche forum](https://forums.commentcamarche.net/forum/);
-- [Guillemot Maxi Studio ISIS infos by A.Tom.X](http://web.quick.cz/a.tom.x/isis.htm).
+- [Guillemot Maxi Studio ISIS infos](http://web.quick.cz/a.tom.x/isis.htm) @ [Project A.Tom.X](http://web.quick.cz/a.tom.x/).
 
 Drivers/softwares:
 - [Guillemot Maxi Studio ISIS CDs](https://archive.org/details/Guillemot_Maxi_Studio_ISIS) @ archive.org;
