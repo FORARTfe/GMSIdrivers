@@ -177,6 +177,33 @@ playback via the future `isis_sam.c` module.
                          │ 8× line in + 4× line out     │
                          └──────────────────────────────┘
 ```
+```mermaid
+flowchart TB
+    subgraph CARD["Guillemot Maxi Studio ISIS"]
+        direction LR
+
+        ESS["ESS ES1978MS<br/>(Maestro-2E)<br/><br/>64 APUs<br/>WaveProcessor<br/>WaveCache<br/>GPIO[0..11]"]
+
+        DAC["PCM1718E<br/>18-bit DAC"]
+        CODEC["PCM3001E codec"]
+        SAM["SAM9707<br/>Dream synth<br/>+ SRAM/DRAM"]
+
+        ESS -->|"MAESTRO_DOUT"| DAC
+        CODEC -->|"AC97 bus"| ESS
+        SAM -->|"ISIS ports"| ESS
+    end
+
+    ALSA["Linux ALSA<br/>maestro2em.ko"]
+    ISIS_SW["isis_sam.c (TODO)<br/>isis.bin firmware<br/>bank4m.94b soundfont"]
+
+    subgraph EXT["External Box (RS-422)"]
+        EXT_IO["CS8414 S/PDIF RX (96 kHz)<br/>CS8402 S/PDIF TX<br/>PCM1728E 24-bit/96 kHz DAC<br/>PCM1800E 20-bit ADC<br/>MIDI IN/THRU/OUT<br/>8× line in + 4× line out"]
+    end
+
+    ESS -->|"PCI bus"| ALSA
+    SAM -->|"ISA-style"| ISIS_SW
+    ISIS_SW --> EXT_IO
+```
 
 ## License
 
