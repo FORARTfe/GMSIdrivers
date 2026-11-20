@@ -7,7 +7,7 @@ A comprehensive, service-manual-accurate checklist to inspect, update, assemble,
 ## 1. Visual Inspection, Hardware Audit & Functional Testing
 
 - [ ] **Chassis Disassembly & Visual Inspection (Per Service Guide Ch. 3):**
-  - Turn off the system, unplug all cables, remove the **two rear screws** holding the upper/left cover, slide the left side cover out, and gently detach the front bezel if accessing drive bays[cite: 81].
+  - Turn off the system, unplug all cables, remove the **two rear screws** holding the upper/left cover, slide the left side cover out, and gently detach the front bezel if accessing drive bays[cite: 77, 81].
   - Inspect the **J89MG** motherboard (Micro-ATX, Intel 865G Springdale-G Northbridge + ICH5 Southbridge + SMSC LPC47M192 Super I/O)[cite: 14, 33, 126, 133] and the FSP power supply (**200W** `FSP200-50GLV` or **250W** `FSP250-60THA`[cite: 130], rated 220–240V~, 50Hz, 3A[cite: 3]) for **bulging, leaking, or vented electrolytic capacitors**.
   - Check the CMOS battery (**CR2032**, located near `JBAT1` / PCI slots)[cite: 84, 118]: replace if voltage is below `2.9V` to prevent `CMOS Battery Failed` or `CMOS Checksum Error` messages during POST[cite: 109].
   - Clean dust from the Socket 478 heatsink/fan (`CPUFAN1`), rear system fan (`SYSFAN1`), Northbridge heatsink, and slots; release the two heatsink latches to inspect/reapply thermal paste on the Pentium 4 / Celeron CPU if needed[cite: 84, 117].
@@ -106,7 +106,7 @@ Boot from **[GParted Live](https://gparted.org/livecd.php)** (CD or USB) and pre
 ## 5. Linux Installation & Dual-Boot Configuration
 
 - [ ] **Install a 32-bit (`i386` / `i686`) Linux Distribution with Full ALSA Build Headers:**
-  - Recommended: **[Debian 12 (Bookworm) 32-bit (`i386`)](https://www.debian.org/releases/bookworm/debian-installer/)** (last official Debian release with full 32-bit kernel/installer support), **[antiX Linux (32-bit)](https://antixlinux.com/)**, or **[Slackware 15.0 (32-bit)](http://www.slackware.com/)**.
+  - Recommended: **[Debian 12.15.0 (Bookworm) 32-bit (`i386`) CD/ISO Images](https://cdimage.debian.org/cdimage/archive/12.15.0/i386/iso-cd/)** (last official Debian release with full 32-bit kernel/installer support), **[antiX Linux (32-bit)](https://antixlinux.com/)**, or **[Slackware 15.0 (32-bit)](http://www.slackware.com/)**.
   - Install onto **Partition 3 (`ext4`)** with swap on **Partition 4** and mount **Partition 2 (`FAT32`)** in `/etc/fstab` under `/mnt/shared` (`uid=1000,gid=1000,umask=002`).
 - [ ] **Configure GRUB2 Dual-Boot Menu:**
   - Install **GRUB2** to the SATA SSD MBR and verify `os-prober` adds **Windows 98 SE** (`chainloader +1` on `(hd0,msdos1)`).
@@ -140,3 +140,4 @@ Boot from **[GParted Live](https://gparted.org/livecd.php)** (CD or USB) and pre
 - **V9 Retro Controller Repository:** https://github.com/michaeldale/V9-Retro-Controller
 - **Velocity9x Repository:** https://github.com/michaeldale/velocity9x
 - **Patch for Windows 3.11/95/98/98 SE/Me (`patcher9x`):** https://github.com/JHRobotics/patcher9x
+- **Debian 12.15.0 Bookworm `i386` ISO-CD Archive:** https://cdimage.debian.org/cdimage/archive/12.15.0/i386/iso-cd/
