@@ -13,7 +13,7 @@ A comprehensive, service-manual-accurate checklist to inspect, update, assemble,
   - Clean dust from the Socket 478 heatsink/fan (`CPUFAN1`), rear system fan (`SYSFAN1`), Northbridge heatsink, and slots; release the two heatsink latches to inspect/reapply thermal paste on the Pentium 4 / Celeron CPU if needed[cite: 84, 117].
   - Verify internal cabling on board headers: `ATX1` (20-pin), `JPW1` (ATX 12V 4-pin), `JFP1` (front panel), `JUSB2`/`JUSB3` (front USB), `JAUD1` (front audio — note: if front audio is disconnected, jumpers must be installed on pins **5–6** and **9–10** of `JAUD1` for rear Line-Out to function)[cite: 117].
 - [ ] **Verify Core & Peripheral Hardware Presence/Functionality:**
-  - **CPU & RAM (Dual-Channel DDR400/333/266):** Confirm Socket 478 CPU detection (Pentium 4 up to 3.2 GHz / 800 MHz FSB or Celeron)[cite: 30]. Populate matching DDR DIMM pairs across **Channel A (`DIMM 1`, `DIMM 2`)** and **Channel B (`DIMM 3`, `DIMM 4`)** for 128-bit Dual-Channel mode (unbuffered, non-ECC, 2.5V, max 1 GB per slot / 4 GB total)[cite: 30, 35]. Test modules with **Memtest86+**, then leave **≤ 512 MB** installed initially for the Windows 98 SE installation phase.
+  - **CPU & RAM (Dual-Channel DDR400/333/266):** Confirm Socket 478 CPU detection (Pentium 4 up to 3.2 GHz / 800 MHz FSB or Celeron)[cite: 30]. Populate matching DDR DIMM pairs across **Channel A (`DIMM 1`, `DIMM 2`)** and **Channel B (`DIMM 3`, `DIMM 4`)** for 128-bit Dual-Channel mode (unbuffered, non-ECC, 2.5V, max 1 GB per slot / 4 GB total)[cite: 30, 35]. Test modules with **[Memtest86+](https://www.memtest.org/)**, then leave **≤ 512 MB** installed initially for the Windows 98 SE installation phase (or patch the installer media upfront with `patcher9x`).
   - **Optical Drives (Optional for installation/testing):** Verify Master/Slave jumpers and tray/laser health on IDE channels `IDE1` (Primary, blue connector) or `IDE2` (Secondary)[cite: 83, 117] for drives such as the **BenQ DW1640** DVD±RW (May 2005, P/N `0F2`)[cite: 1] or **BTC BDV 316E** DVD-ROM (Oct 2004, P/N `KV.0160A.004`, FW `0055`)[cite: 2].
   - **SATA SSD Preparation:** Connect a 2.5" SATA SSD (recommended **≤ 120 GB / 128 GB** to stay below the 137 GB 28-bit LBA limit during initial Win98 SE setup) to **`SATA1` (Port 0)** on the motherboard using a 7-pin SATA data cable and a Molex-to-SATA power adapter (ICH5 supports SATA 1.5 Gb/s / 150 MB/s)[cite: 65, 117].
   - **Guillemot Maxi Studio ISIS:** Visually inspect the PCI card, internal ribbon cable, rear breakout bracket, and external 8-in/4-out rack. Install the ISIS PCI card into **`PCI Slot 3`** (bottom slot, furthest from the AGP slot and Northbridge/VRM)[cite: 118] to minimize electromagnetic interference (EMI) — all 3 PCI slots are 32-bit v2.3 Master ($3.3\text{V}/5\text{V}$)[cite: 14].
@@ -25,7 +25,7 @@ A comprehensive, service-manual-accurate checklist to inspect, update, assemble,
 - [ ] **Verify Jumper Settings & System BIOS Revision:**
   - Confirm board jumpers before powering on: **`JBAT1`** on pins `1-2` (*Normal*; `2-3` clears CMOS)[cite: 62, 117], **`JBIOS1`** on `1-2` (*BIOS Flash Locked*; set to `2-3` *Unlocked* only if flashing BIOS)[cite: 117], **`JLAN1`** *Enabled* (Broadcom BCM5705 GbE)[cite: 14, 117].
   - Press **`DEL`** during POST to enter the **Phoenix - AwardBIOS CMOS Setup Utility** (v6.00 PG)[cite: 39, 40]. Check **`Product Information`** for `System BIOS Version` and `System BIOS ID` (e.g., `R03-A0`)[cite: 40].
-  - If a newer official Acer Veriton 7600GT BIOS image is available (flashed via DOS using `AWDFLASH.EXE` with `JBIOS1` unlocked[cite: 30, 117], or via `ALT+F2` during POST if `AWDFLASH.EXE` is on a floppy[cite: 107]), update it before OS installation, then return `JBIOS1` to *Locked* and select **`Load Optimized Defaults`**[cite: 59, 117].
+  - If a newer official Acer Veriton 7600GT BIOS image is available (e.g., via **[The Retro Web](https://theretroweb.com/)** / Acer archives, flashed via DOS using `AWDFLASH.EXE` with `JBIOS1` unlocked[cite: 30, 117], or via `ALT+F2` during POST if `AWDFLASH.EXE` is on a floppy[cite: 107]), update it before OS installation, then return `JBIOS1` to *Locked* and select **`Load Optimized Defaults`**[cite: 59, 117].
 - [ ] **Check Optical Drive Firmware (If Installed):**
   - **BenQ DW1640:** Verify firmware revision (latest official is `BSRB` / `BSOB`).
   - **BTC BDV 316E:** Factory firmware `0055`[cite: 2] (no update needed unless disc read errors occur).
@@ -67,7 +67,7 @@ A comprehensive, service-manual-accurate checklist to inspect, update, assemble,
 
 ## 3. Partitioning & Dual-Boot Layout (SATA SSD)
 
-Boot from **GParted Live** (CD or USB) and prepare a single **MBR** (`msdos`) partition table on the SATA SSD:
+Boot from **[GParted Live](https://gparted.org/livecd.php)** (CD or USB) and prepare a single **MBR** (`msdos`) partition table on the SATA SSD:
 
 - [ ] **Initialize Disk as MBR (`msdos`):** Windows 98 SE cannot boot from or read GPT disks.
 - [ ] **Create Partition Layout:**
@@ -82,23 +82,23 @@ Boot from **GParted Live** (CD or USB) and prepare a single **MBR** (`msdos`) pa
 
 - [ ] **Install Windows 98 SE onto Partition 1 (`FAT32`):**
   - Boot from Windows 98 SE media (or copy `\WIN98` to Partition 1 from a DOS boot disk and run `setup.exe /is /ie` for a fast SSD installation).
-- [ ] **Apply Memory Limit Patch (> 512 MB RAM):**
-  - Apply **PATCHMEM** (Rudolph R. Loew) to `VMM32.VXD` / `IO.SYS`, then populate full matched Dual-Channel DDR400 RAM modules across `DIMM 1–4` (up to 3–4 GB)[cite: 30, 35, 37].
+- [ ] **Apply CPU & Memory Limit Fixes (> 512 MB RAM & Fast CPUs):**
+  - Run **[Patch for Windows 3.11/95/98/98 SE/Me to fix CPU issues (`patcher9x`)](https://github.com/JHRobotics/patcher9x)** (open-source tool by JHRobotics — patches `VMM32.VXD` / `NDIS.VXD` / `ESDI_506.PDR` to resolve fast-CPU boot/protection errors and memory limits > 512 MB), then populate full matched Dual-Channel DDR400 RAM modules across `DIMM 1–4` (up to 3–4 GB)[cite: 30, 35, 37].
 - [ ] **Install Intel 865G / ICH5 Chipset Drivers:**
-  - Install **Intel Chipset Software Installation Utility (INF Update) v6.3.0.1007** for Windows 98/ME and reboot.
+  - Install **[Intel Chipset Software Installation Utility (INF Update) v6.3.0.1007](https://www.philscomputerlab.com/intel-chipset-drivers.html)** for Windows 98/ME and reboot.
   - Confirm in *Device Manager* that DMA is active on the primary/secondary IDE/SATA channels and no resource conflicts exist.
 - [ ] **Install Network, Storage & USB Drivers:**
-  - Install **Broadcom NetXtreme BCM5705 Gigabit Ethernet** drivers for Windows 98 SE (required for V9x Remote Agent TCP/IP connectivity)[cite: 14, 33].
-  - Apply **Enable48BitLBA / patched `ESDI_506.PDR`** if total SSD size is ≥ 137 GB.
-  - Install **NUSB 3.6** (Native USB Mass Storage drivers) for USB 2.0 flash drive support.
+  - Install **[Broadcom NetXtreme BCM5705 Gigabit Ethernet Drivers](https://www.philscomputerlab.com/broadcom-network-drivers.html)** for Windows 98 SE (required for V9x Remote Agent TCP/IP connectivity)[cite: 14, 33].
+  - Apply **[Enable48BitLBA / Patched `ESDI_506.PDR`](https://www.philscomputerlab.com/windows-98-48-bit-lba.html)** if total SSD size is ≥ 137 GB (if not already handled by `patcher9x`).
+  - Install **[NUSB 3.6 (Native USB Mass Storage Drivers)](https://www.philscomputerlab.com/windows-98-usb-storage-driver.html)** for USB 2.0 flash drive support.
 - [ ] **Install Display & DirectX Drivers:**
-  - Install **Intel Extreme Graphics 2** Win9x drivers (`v14.10.3.3762` or `v13.6.1`) — or dedicated AGP GPU drivers / **VBEMP 9x** / **Velocity9x** (`michaeldale/velocity9x`).
-  - Install **DirectX 9.0c** (October 2006 build for Win9x).
+  - Install **[Intel Extreme Graphics 2 Win9x Drivers](https://www.philscomputerlab.com/intel-865g-drivers.html)** (`v14.10.3.3762` or `v13.6.1`) — or dedicated AGP GPU drivers / **[VBEMP 9x (Universal VESA Driver)](https://bearwindows.zcm.com.au/vbe9x.htm)** / **[Velocity9x](https://github.com/michaeldale/velocity9x)**.
+  - Install **[DirectX 9.0c (October 2006 Redistributable)](https://www.philscomputerlab.com/directx.html)** for Windows 98 SE.
 - [ ] **Install Community Updates & Utilities:**
-  - Install **Unofficial Windows 98 SE Service Pack 3 (U98SESP3)** (core updates only).
-  - Install **7-Zip 9.20** and optionally **KernelEx**.
+  - Install **[Unofficial Windows 98 SE Service Pack 3 (U98SESP3)](https://www.majorgeeks.com/files/details/unofficial_windows_98_se_service_pack.html)** (select core/main updates only).
+  - Install **[7-Zip 9.20](https://sourceforge.net/projects/sevenzip/files/7-Zip/9.20/)** and optionally **[KernelEx](https://sourceforge.net/projects/kernelex/)**.
 - [ ] **Install & Verify Guillemot Maxi Studio ISIS (v1.90):**
-  - Install official **Guillemot Maxi Studio ISIS v1.90** drivers and *ISIS Console*.
+  - Install official **[Guillemot Maxi Studio ISIS v1.90 Drivers](https://archive.org/details/guillemot-maxi-studio-isis-drivers)** and *ISIS Console*.
   - Verify analog/digital audio I/O on the external rack, MIDI ports, ASIO, and the Dream SAM9707 synthesizer; record exact PCI Vendor/Device IDs, IRQ assignment, and I/O port ranges.
 
 ---
@@ -106,7 +106,7 @@ Boot from **GParted Live** (CD or USB) and prepare a single **MBR** (`msdos`) pa
 ## 5. Linux Installation & Dual-Boot Configuration
 
 - [ ] **Install a 32-bit (`i386` / `i686`) Linux Distribution with Full ALSA Build Headers:**
-  - Recommended: **Debian 12 (Bookworm) 32-bit (`i386`)** (last official Debian release with full 32-bit kernel/installer support), **antiX Linux (32-bit)**, or **Slackware 15.0 (32-bit)**.
+  - Recommended: **[Debian 12 (Bookworm) 32-bit (`i386`)](https://www.debian.org/releases/bookworm/debian-installer/)** (last official Debian release with full 32-bit kernel/installer support), **[antiX Linux (32-bit)](https://antixlinux.com/)**, or **[Slackware 15.0 (32-bit)](http://www.slackware.com/)**.
   - Install onto **Partition 3 (`ext4`)** with swap on **Partition 4** and mount **Partition 2 (`FAT32`)** in `/etc/fstab` under `/mnt/shared` (`uid=1000,gid=1000,umask=002`).
 - [ ] **Configure GRUB2 Dual-Boot Menu:**
   - Install **GRUB2** to the SATA SSD MBR and verify `os-prober` adds **Windows 98 SE** (`chainloader +1` on `(hd0,msdos1)`).
@@ -121,15 +121,15 @@ Boot from **GParted Live** (CD or USB) and prepare a single **MBR** (`msdos`) pa
 ## 6. V9x Remote Agent Setup & GMSI Development Workflow
 
 - [ ] **Install V9x Remote Agent on Windows 98 SE:**
-  - Download `V9XREMOTE.ISO` or `v9x-remote-agent--win32.zip` from [michaeldale/V9x-Remote-Agent](https://github.com/michaeldale/V9x-Remote-Agent) and run `SETUP.EXE` on Windows 98 SE.
+  - Download `V9XREMOTE.ISO` or `v9x-remote-agent--win32.zip` from **[michaeldale/V9x-Remote-Agent](https://github.com/michaeldale/V9x-Remote-Agent)** and run `SETUP.EXE` on Windows 98 SE.
   - Configure `C:\V9XREMOTE\AGENT.INI` (per `docs/physical-machine.md`) and set `allowed_client` to your modern development host's IP address on a **trusted isolated LAN** (agent uses unauthenticated TCP/HTTP).
   - Enable Windows 98 SE autologon so Explorer and the agent initialize automatically on boot.
 - [ ] **Configure Modern Development Host:**
-  - Clone [FORARTfe/GMSIdrivers](https://github.com/FORARTfe/GMSIdrivers) and [michaeldale/V9x-Remote-Agent](https://github.com/michaeldale/V9x-Remote-Agent).
-  - Set up **Python 3.9+** (`mcp/v9x_mcp.py` for MCP/LLM workflows), PowerShell (`scripts/v9xctl.ps1`), or [michaeldale/V9-Retro-Controller](https://github.com/michaeldale/V9-Retro-Controller).
+  - Clone **[FORARTfe/GMSIdrivers](https://github.com/FORARTfe/GMSIdrivers)** and **[michaeldale/V9x-Remote-Agent](https://github.com/michaeldale/V9x-Remote-Agent)**.
+  - Set up **[Python 3.9+](https://www.python.org/downloads/)** (`mcp/v9x_mcp.py` for MCP/LLM workflows), PowerShell (`scripts/v9xctl.ps1`), or **[michaeldale/V9-Retro-Controller](https://github.com/michaeldale/V9-Retro-Controller)**.
   - Verify network connectivity (agent port `9869` and VNC port `5900`) between your host and the Veriton 7600GT.
 - [ ] **Capture a Full Baseline SSD Image:**
-  - Before loading experimental Win9x VxD/WDM or Linux ALSA kernel modules from `GMSIdrivers`, image the entire SATA SSD using **Clonezilla** or `dd` from a live USB for rapid disaster recovery.
+  - Before loading experimental Win9x VxD/WDM or Linux ALSA kernel modules from `GMSIdrivers`, image the entire SATA SSD using **[Clonezilla Live](https://clonezilla.org/downloads.php)** or `dd` from a live USB for rapid disaster recovery.
 
 ---
 
@@ -139,3 +139,4 @@ Boot from **GParted Live** (CD or USB) and prepare a single **MBR** (`msdos`) pa
 - **V9x Remote Agent Repository:** https://github.com/michaeldale/V9x-Remote-Agent
 - **V9 Retro Controller Repository:** https://github.com/michaeldale/V9-Retro-Controller
 - **Velocity9x Repository:** https://github.com/michaeldale/velocity9x
+- **Patch for Windows 3.11/95/98/98 SE/Me (`patcher9x`):** https://github.com/JHRobotics/patcher9x
