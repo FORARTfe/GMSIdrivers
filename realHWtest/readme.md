@@ -66,7 +66,7 @@ A comprehensive, service-manual-accurate checklist to inspect, update, assemble,
 
 ## 3. Pre-OS Hardware Verification (`lshw`) & Partitioning Layout (SATA SSD)
 
-Boot from **[GParted Live 1.6.0-10 (`i686` / `i686-pae`)](https://sourceforge.net/projects/gparted/files/gparted-live-stable/1.6.0-10/)** (the final official release with 32-bit `i686` and `i686-pae` builds) **before installing any operating system**:
+Boot from **[GParted Live 1.6.0-10 i686-pae)](https://sourceforge.net/projects/gparted/files/gparted-live-stable/1.6.0-10/gparted-live-1.6.0-10-i686-pae.iso/download)** (the final official release with 32-bit `i686` and `i686-pae` builds) **before installing any operating system**:
 
 - [ ] **Audit Full Hardware Inventory with `lshw` & Save Persistent Reports:**
   - Because GParted Live runs in RAM (`tmpfs`), save output files to a persistent writable medium (such as a second USB drive or an already created/mounted partition, e.g., `/mnt/out`) rather than `/tmp` alone:
