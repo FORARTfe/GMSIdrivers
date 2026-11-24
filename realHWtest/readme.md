@@ -66,7 +66,7 @@ A comprehensive, service-manual-accurate checklist to inspect, update, assemble,
 
 ## 3. Pre-OS Hardware Verification (`lshw`) & Partitioning Layout (SATA SSD)
 
-Boot from **[GParted Live 1.6.0-10 i686-pae)](https://sourceforge.net/projects/gparted/files/gparted-live-stable/1.6.0-10/gparted-live-1.6.0-10-i686-pae.iso/download)** (the final official release with 32-bit `i686` and `i686-pae` builds) **before installing any operating system**:
+Boot from **[GParted Live 1.6.0-10 (i686-pae)](https://sourceforge.net/projects/gparted/files/gparted-live-stable/1.6.0-10/gparted-live-1.6.0-10-i686-pae.iso/download)** (the final official release with 32-bit builds) **before installing any operating system**:
 
 - [ ] **Audit Full Hardware Inventory with `lshw` & Save Persistent Reports:**
   - Because GParted Live runs in RAM (`tmpfs`), save output files to a persistent writable medium (such as a second USB drive or an already created/mounted partition, e.g., `/mnt/out`) rather than `/tmp` alone:
@@ -102,7 +102,7 @@ Boot from **[GParted Live 1.6.0-10 i686-pae)](https://sourceforge.net/projects/g
 - [ ] **Install Windows 98 SE onto Partition 1 (`FAT32`):**
   - Boot from Windows 98 SE media (or copy `\WIN98` to Partition 1 from a DOS boot disk and run `setup.exe /is /ie` for a fast SSD installation).
 - [ ] **Apply CPU & Memory Limit Fixes (> 512 MB RAM & Fast CPUs):**
-  - Run **[Patch for Windows 3.11/95/98/98 SE/Me to fix CPU issues (`patcher9x`)](https://github.com/JHRobotics/patcher9x)** (open-source tool by JHRobotics — patches `VMM32.VXD` / `NDIS.VXD` / `ESDI_506.PDR` to resolve fast-CPU boot/protection errors and memory limits > 512 MB), then populate additional DDR modules (including the Hynix `PC2700` `HYMD232646C8J-J AA` modules if desired, noting memory speed will clock down to the slowest DIMM).
+  - Run **[patcher9x](https://github.com/JHRobotics/patcher9x/releases/latest)** (to fix fast-CPU boot/protection errors and memory limits > 512 MB), then populate additional DDR modules (including the Hynix `PC2700` `HYMD232646C8J-J AA` modules if desired, noting memory speed will clock down to the slowest DIMM).
 - [ ] **Install Intel 865G / ICH5 Chipset Drivers:**
   - Install **[Intel Chipset Software Installation Utility (INF Update) v6.3.0.1007](https://www.philscomputerlab.com/intel-chipset-drivers.html)** for Windows 98/ME and reboot.
   - Confirm in *Device Manager* that DMA is active on the primary/secondary IDE/SATA channels and no resource conflicts exist.
@@ -140,7 +140,7 @@ Boot from **[GParted Live 1.6.0-10 i686-pae)](https://sourceforge.net/projects/g
 ## 6. V9x Remote Agent Setup & GMSI Development Workflow
 
 - [ ] **Install V9x Remote Agent on Windows 98 SE:**
-  - Download `V9XREMOTE.ISO` or `v9x-remote-agent--win32.zip` from **[michaeldale/V9x-Remote-Agent](https://github.com/michaeldale/V9x-Remote-Agent)** and run `SETUP.EXE` on Windows 98 SE.
+  - Download **[michaeldale/V9x-Remote-Agent](https://github.com/michaeldale/V9x-Remote-Agent/releases/latest)** and run `SETUP.EXE` on Windows 98 SE.
   - Configure `C:\V9XREMOTE\AGENT.INI` (per `docs/physical-machine.md`) and set `allowed_client` to your modern development host's IP address on a **trusted isolated LAN** (agent uses unauthenticated TCP/HTTP).
   - Enable Windows 98 SE autologon so Explorer and the agent initialize automatically on boot.
 - [ ] **Configure Modern Development Host:**
